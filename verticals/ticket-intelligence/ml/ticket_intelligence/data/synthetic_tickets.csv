@@ -1,0 +1,61 @@
+ticket_id,customer_message,category,priority
+TCK-0001,"I was charged twice for the same invoice and nobody has fixed it after three calls. I need a refund today.",billing_dispute,high
+TCK-0002,"The export job failed overnight and our warehouse team cannot ship orders until the CSV is generated.",technical_issue,high
+TCK-0003,"Can you update the billing email on our account before next month's renewal?",account_access,low
+TCK-0004,"My login keeps saying my account is locked even after password reset. This is blocking payroll approvals.",account_access,high
+TCK-0005,"The shipment arrived two days late and the tracking page still says pending. Please explain what happened.",shipping_delay,medium
+TCK-0006,"I want to cancel the annual plan because the contract terms were misrepresented by sales.",cancellation,high
+TCK-0007,"Where can I download a copy of our SOC 2 report for vendor review?",compliance_request,medium
+TCK-0008,"Your system is down again. If this is not resolved in one hour I am escalating to our VP.",technical_issue,high
+TCK-0009,"Please resend the receipt for invoice 9234. I cannot find it in email.",billing_dispute,low
+TCK-0010,"The package is missing and our customer is furious. We need replacement options immediately.",shipping_delay,high
+TCK-0011,"We need to remove an old admin user who left the company last week.",account_access,medium
+TCK-0012,"I was promised a refund but support keeps closing my tickets. This is unacceptable.",billing_dispute,high
+TCK-0013,"Can you confirm whether your data processing addendum covers EU customer records?",compliance_request,high
+TCK-0014,"The dashboard loads slowly but still works. Can someone take a look when possible?",technical_issue,medium
+TCK-0015,"I need instructions to downgrade our subscription at the end of the billing cycle.",cancellation,medium
+TCK-0016,"Tracking says delivered but nothing arrived. This is the second missing shipment this month.",shipping_delay,high
+TCK-0017,"Please add SSO for the finance team when you have time.",account_access,low
+TCK-0018,"Our legal team needs your subprocessors list before we approve renewal.",compliance_request,high
+TCK-0019,"The invoice amount does not match the contract. I dispute this charge and need a corrected bill.",billing_dispute,high
+TCK-0020,"A button on the settings page throws a 500 error when I save notification preferences.",technical_issue,medium
+TCK-0021,"I cannot access the admin portal and the reset email never arrives.",account_access,high
+TCK-0022,"Cancel my subscription immediately. I have asked twice already and keep getting billed.",cancellation,high
+TCK-0023,"Our delivery window changed without notice. Can you reroute the order to the backup location?",shipping_delay,medium
+TCK-0024,"Do you support HIPAA requirements for patient support workflows?",compliance_request,high
+TCK-0025,"The tax line on our invoice looks wrong. Could you review it?",billing_dispute,medium
+TCK-0026,"Images are not rendering in the mobile app after the latest release.",technical_issue,medium
+TCK-0027,"Can you invite three new operators to our account?",account_access,low
+TCK-0028,"I need confirmation that our cancellation request was processed.",cancellation,medium
+TCK-0029,"Carrier says the address is invalid but it is correct. Please help before the order returns.",shipping_delay,medium
+TCK-0030,"Please send your privacy policy and DPA for procurement.",compliance_request,medium
+TCK-0031,"You charged my expired card and caused bank fees. I expect reimbursement.",billing_dispute,high
+TCK-0032,"The API is returning 429s for normal traffic and our checkout flow is failing.",technical_issue,high
+TCK-0033,"The user role permissions are confusing. I only need read-only access for auditors.",account_access,medium
+TCK-0034,"We are leaving because support has ignored every cancellation request.",cancellation,high
+TCK-0035,"The replacement shipment has not moved in four days. Our client deadline is tomorrow.",shipping_delay,high
+TCK-0036,"Security asked whether you encrypt backups and how long logs are retained.",compliance_request,medium
+TCK-0037,"Can you apply the nonprofit discount to our next invoice?",billing_dispute,low
+TCK-0038,"Search results return stale records after we update inventory quantities.",technical_issue,medium
+TCK-0039,"My MFA device broke and I need account recovery for the owner login.",account_access,high
+TCK-0040,"Please pause renewal while procurement evaluates alternatives.",cancellation,medium
+TCK-0041,"The delivery was damaged and the customer is threatening a chargeback.",shipping_delay,high
+TCK-0042,"We received a data deletion request and need to know your process.",compliance_request,high
+TCK-0043,"Invoice payment failed because the billing portal rejected our ACH details.",billing_dispute,medium
+TCK-0044,"The integration webhook stopped firing and orders are stuck in pending status.",technical_issue,high
+TCK-0045,"Can you change our workspace name?",account_access,low
+TCK-0046,"I accidentally cancelled. Can you restore the account?",cancellation,medium
+TCK-0047,"The package was delivered to the wrong address and contains urgent medical supplies.",shipping_delay,high
+TCK-0048,"Our compliance officer needs audit logs for the last 90 days.",compliance_request,high
+TCK-0049,"The credit memo is missing from our account statement.",billing_dispute,medium
+TCK-0050,"I forgot my password and need a reset link.",account_access,low
+TCK-0051,"The app crashes only when uploading a large CSV file.",technical_issue,medium
+TCK-0052,"I want to understand cancellation fees before making a decision.",cancellation,low
+TCK-0053,"The parcel is delayed but there is no urgent deadline.",shipping_delay,low
+TCK-0054,"Can you confirm your GDPR data residency options?",compliance_request,medium
+TCK-0055,"Your billing team ignored my dispute and I will contact my attorney if this charge remains.",billing_dispute,high
+TCK-0056,"Production sync is broken and executives are asking for updates every 15 minutes.",technical_issue,high
+TCK-0057,"Please unlock one agent account after too many login attempts.",account_access,medium
+TCK-0058,"Stop charging us. We cancelled in writing last month.",cancellation,high
+TCK-0059,"The replacement order is late again and this repeat issue is hurting our SLA.",shipping_delay,high
+TCK-0060,"We need breach notification terms reviewed by legal before launch.",compliance_request,high

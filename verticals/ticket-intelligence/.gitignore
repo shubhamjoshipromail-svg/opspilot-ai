@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+.streamlit/
+
+# Keep the small baseline artifacts for the portfolio demo, but avoid large fine-tuned checkpoints.
+ml/ticket_intelligence/outputs/transformer/checkpoint-*/
+ml/ticket_intelligence/outputs/transformer/best_model/

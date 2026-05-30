@@ -7,5 +7,6 @@ python-dotenv
 streamlit
 pandas
 scikit-learn
+matplotlib
 pytest
 requests

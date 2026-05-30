@@ -6,7 +6,7 @@
 
 OpsPilot AI is planned as a production-style AI workflow product for operations teams that manage high-volume, messy, policy-sensitive cases such as support tickets, claims, disputes, billing issues, fulfillment exceptions, and internal service requests.
 
-This repository currently includes the **Phase 1 backend/database vertical slice**. It contains the original planning scaffold plus a minimal FastAPI and SQLAlchemy ticket CRUD workflow that can persist tickets to Railway Postgres through `DATABASE_URL` or fall back to local SQLite for development.
+This repository currently includes the **Phase 1 backend/database vertical slice** plus a new **Ticket Intelligence vertical slice** under `verticals/ticket-intelligence/`. The backend contains a minimal FastAPI and SQLAlchemy ticket CRUD workflow that can persist tickets to Railway Postgres through `DATABASE_URL` or fall back to local SQLite for development. The Ticket Intelligence vertical adds a runnable baseline ML triage layer, escalation-risk routing, evaluation artifacts, API endpoints, and responsible-AI documentation.
 
 The future product will combine structured case management, machine learning, retrieval over policies and SOPs, LLM-assisted recommendations, evaluation traces, human approval workflows, and business impact analytics.
 
@@ -165,7 +165,7 @@ The project will keep algorithms swappable:
 - `judge_v1`: LLM rubric scoring.
 - `judge_v2`: pairwise preference or reward model.
 
-The scaffold does not implement any of these models yet.
+The first runnable model slice now lives in `verticals/ticket-intelligence/`. It implements `triage_model_v1` with TF-IDF plus logistic regression for category and priority prediction, plus `risk_model_v1` as deterministic escalation-risk routing logic.
 
 ## 13. Planned Analytics Strategy
 
@@ -218,7 +218,7 @@ ROI calculations will be presented as decision-support analytics, not as exact f
 - **Phase 0:** Repo scaffold and documentation.
 - **Phase 1:** Postgres plus FastAPI ticket CRUD. Current phase.
 - **Phase 2:** Streamlit case inbox and workspace.
-- **Phase 3:** Baseline ML models.
+- **Phase 3:** Baseline ML models. Initial vertical implemented in `verticals/ticket-intelligence/`.
 - **Phase 4:** Policy retrieval/RAG.
 - **Phase 5:** LLM recommendation and response drafting.
 - **Phase 6:** AI judge and evaluation traces.
@@ -284,6 +284,16 @@ Run the frontend placeholder:
 streamlit run frontend/streamlit_app.py
 ```
 
+Run the Ticket Intelligence vertical:
+
+```bash
+cd verticals/ticket-intelligence
+python ml/ticket_intelligence/train_baseline.py
+python ml/ticket_intelligence/evaluate.py
+python ml/ticket_intelligence/predict.py "I was charged twice and need a refund today."
+uvicorn app.api.main:app --reload
+```
+
 ## 20. Railway Postgres Notes
 
 Railway Postgres can be used later for the deployed database. The planned flow:
@@ -306,6 +316,8 @@ opspilot-ai/
   data/
   experiments/
   docs/
+  verticals/
+    ticket-intelligence/
   tests/
 ```
 
@@ -326,6 +338,7 @@ It is intended to demonstrate the ability to design AI workflows that could be u
 
 ## 23. Example Future Resume Bullets
 
+- Built OpsPilot Ticket Intelligence, an AI operations triage module that classifies messy support tickets, estimates escalation risk, and routes low-confidence or high-risk cases to human review using baseline text classification, model-versioned outputs, evaluation reports, and human-in-the-loop routing.
 - Designed and built OpsPilot AI, a production-style AI operations copilot for case triage, escalation-risk scoring, policy-grounded recommendations, human review, evaluation, and ROI analytics.
 - Implemented modular model interfaces for swappable triage, risk, retrieval, recommendation, and evaluation components.
 - Built a human-in-the-loop review workflow that captured approvals, overrides, reviewer notes, model versions, and evaluation traces.
@@ -334,7 +347,7 @@ It is intended to demonstrate the ability to design AI workflows that could be u
 
 ## 24. Limitations And Responsible AI Considerations
 
-This repository is only a scaffold. It does not yet include a working product, trained models, retrieval logic, LLM calls, or database implementation.
+This repository is still early-stage. It now includes ticket CRUD plus a working baseline triage/routing vertical, but it does not yet include production training data, policy retrieval, LLM calls, recommendation generation, or a fully integrated review workflow.
 
 Future versions should account for:
 
