@@ -1,0 +1,183 @@
+{
+  "model_version": "ticket-intelligence-v1",
+  "baseline": "tfidf_logistic_regression",
+  "dataset": "ml/ticket_intelligence/data/synthetic_tickets.csv",
+  "train_rows": 45,
+  "test_rows": 15,
+  "category": {
+    "accuracy": 0.6,
+    "macro_f1": 0.6,
+    "weighted_f1": 0.5978,
+    "labels": [
+      "account_access",
+      "billing_dispute",
+      "cancellation",
+      "compliance_request",
+      "shipping_delay",
+      "technical_issue"
+    ],
+    "classification_report": {
+      "account_access": {
+        "precision": 0.42857142857142855,
+        "recall": 1.0,
+        "f1-score": 0.6,
+        "support": 3.0
+      },
+      "billing_dispute": {
+        "precision": 1.0,
+        "recall": 0.3333333333333333,
+        "f1-score": 0.5,
+        "support": 3.0
+      },
+      "cancellation": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1-score": 0.6666666666666666,
+        "support": 2.0
+      },
+      "compliance_request": {
+        "precision": 0.5,
+        "recall": 0.5,
+        "f1-score": 0.5,
+        "support": 2.0
+      },
+      "shipping_delay": {
+        "precision": 0.6666666666666666,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.6666666666666666,
+        "support": 3.0
+      },
+      "technical_issue": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1-score": 0.6666666666666666,
+        "support": 2.0
+      },
+      "accuracy": 0.6,
+      "macro avg": {
+        "precision": 0.7658730158730158,
+        "recall": 0.5833333333333333,
+        "f1-score": 0.6,
+        "support": 15.0
+      },
+      "weighted avg": {
+        "precision": 0.7523809523809523,
+        "recall": 0.6,
+        "f1-score": 0.5977777777777777,
+        "support": 15.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        1,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        1
+      ]
+    ],
+    "target": "category"
+  },
+  "priority": {
+    "accuracy": 0.4667,
+    "macro_f1": 0.2741,
+    "weighted_f1": 0.3585,
+    "labels": [
+      "high",
+      "low",
+      "medium"
+    ],
+    "classification_report": {
+      "high": {
+        "precision": 0.42857142857142855,
+        "recall": 1.0,
+        "f1-score": 0.6,
+        "support": 6.0
+      },
+      "low": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 1.0
+      },
+      "medium": {
+        "precision": 1.0,
+        "recall": 0.125,
+        "f1-score": 0.2222222222222222,
+        "support": 8.0
+      },
+      "accuracy": 0.4666666666666667,
+      "macro avg": {
+        "precision": 0.4761904761904762,
+        "recall": 0.375,
+        "f1-score": 0.2740740740740741,
+        "support": 15.0
+      },
+      "weighted avg": {
+        "precision": 0.7047619047619047,
+        "recall": 0.4666666666666667,
+        "f1-score": 0.3585185185185185,
+        "support": 15.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        6,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        7,
+        0,
+        1
+      ]
+    ],
+    "target": "priority"
+  }
+}

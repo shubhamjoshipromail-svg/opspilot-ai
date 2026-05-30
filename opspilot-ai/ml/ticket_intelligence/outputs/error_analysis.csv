@@ -1,0 +1,11 @@
+ticket_id,customer_message,category,priority,predicted_category,predicted_priority,category_correct,priority_correct
+TCK-0012,I was promised a refund but support keeps closing my tickets. This is unacceptable.,billing_dispute,high,shipping_delay,high,False,True
+TCK-0055,Your billing team ignored my dispute and I will contact my attorney if this charge remains.,billing_dispute,high,account_access,high,False,True
+TCK-0043,Invoice payment failed because the billing portal rejected our ACH details.,billing_dispute,medium,billing_dispute,high,True,False
+TCK-0007,Where can I download a copy of our SOC 2 report for vendor review?,compliance_request,medium,account_access,high,False,False
+TCK-0052,I want to understand cancellation fees before making a decision.,cancellation,low,cancellation,high,True,False
+TCK-0054,Can you confirm your GDPR data residency options?,compliance_request,medium,compliance_request,high,True,False
+TCK-0023,Our delivery window changed without notice. Can you reroute the order to the backup location?,shipping_delay,medium,account_access,high,False,False
+TCK-0038,Search results return stale records after we update inventory quantities.,technical_issue,medium,compliance_request,high,False,False
+TCK-0057,Please unlock one agent account after too many login attempts.,account_access,medium,account_access,high,True,False
+TCK-0015,I need instructions to downgrade our subscription at the end of the billing cycle.,cancellation,medium,account_access,high,False,False
