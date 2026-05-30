@@ -82,6 +82,14 @@ python ml/ticket_intelligence/predict.py "I was charged twice and need a refund 
 uvicorn app.api.main:app --reload
 ```
 
+Notebook workflow:
+
+```bash
+jupyter notebook notebooks/ticket_intelligence_walkthrough.ipynb
+```
+
+The notebook keeps the ML pipeline in one place so you can edit normalization, model parameters, thresholds, and routing logic cell by cell.
+
 Example API request:
 
 ```bash
