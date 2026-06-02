@@ -76,11 +76,37 @@ Routing decisions include:
 From `verticals/ticket-intelligence/`:
 
 ```bash
+python ml/ticket_intelligence/data_audit.py
+python ml/ticket_intelligence/create_splits.py
 python ml/ticket_intelligence/train_baseline.py
 python ml/ticket_intelligence/evaluate.py
 python ml/ticket_intelligence/predict.py "I was charged twice and need a refund today."
 uvicorn app.api.main:app --reload
 ```
+
+The main training path expects real normalized split files:
+
+- `data/processed/train.csv`
+- `data/processed/val.csv`
+- `data/processed/test.csv`
+
+`data_audit.py` scans repository CSV/TSV/JSON/JSONL files and identifies the largest real ticket dataset with usable text/category columns. `create_splits.py` writes fixed train/validation/test splits with `random_state=42` and category stratification where possible.
+
+Audit outputs are saved to:
+
+- `data/processed/data_audit.json`
+- `data/processed/data_audit_summary.csv`
+- `data/processed/seed_load_scripts.csv`
+
+The 60-row `ml/ticket_intelligence/data/synthetic_tickets.csv` file is now reserved for smoke tests and README demos:
+
+```bash
+python ml/ticket_intelligence/train_baseline.py --smoke-test
+python ml/ticket_intelligence/train_transformer.py --smoke-test
+python ml/ticket_intelligence/create_splits.py --allow-synthetic-smoke
+```
+
+When `create_splits.py --allow-synthetic-smoke` is used, synthetic splits are written to `data/smoke_processed/` instead of the real `data/processed/` training location.
 
 Notebook workflow:
 
@@ -108,14 +134,14 @@ curl -X POST http://127.0.0.1:8000/predict \
 
 ## Current Baseline Results
 
-The checked-in starter run uses the synthetic dataset and a 75/25 stratified split:
+The checked-in starter run was produced from the synthetic smoke dataset before real training data was available:
 
 - Category accuracy: `0.60`
 - Category macro-F1: `0.60`
 - Priority accuracy: `0.4667`
 - Priority macro-F1: `0.2741`
 
-Priority performance is intentionally treated as an early benchmark, not a finished product result. The model card and roadmap call out better priority labeling, calibration, and transformer fine-tuning as next steps.
+These numbers are smoke-test benchmarks only. Main model results should be regenerated after adding a real normalized dataset and creating `data/processed/train.csv`, `val.csv`, and `test.csv`.
 
 ## Responsible AI
 

@@ -288,6 +288,8 @@ Run the Ticket Intelligence vertical:
 
 ```bash
 cd verticals/ticket-intelligence
+python ml/ticket_intelligence/data_audit.py
+python ml/ticket_intelligence/create_splits.py
 python ml/ticket_intelligence/train_baseline.py
 python ml/ticket_intelligence/evaluate.py
 python ml/ticket_intelligence/predict.py "I was charged twice and need a refund today."

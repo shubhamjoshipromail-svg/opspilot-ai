@@ -1,0 +1,9 @@
+file_path,row_count,columns,has_required_training_columns,is_smoke_or_generated_output,duplicate_customer_message_count,read_error
+verticals/ticket-intelligence/examples/sample_prediction.json,1,customer_message,False,False,0.0,
+verticals/ticket-intelligence/ml/ticket_intelligence/data/synthetic_tickets.csv,60,"ticket_id, customer_message, category, priority",True,True,0.0,
+verticals/ticket-intelligence/ml/ticket_intelligence/outputs/error_analysis.csv,10,"ticket_id, customer_message, category, priority, predicted_category, predicted_priority, category_correct, priority_correct",True,True,0.0,
+verticals/ticket-intelligence/ml/ticket_intelligence/outputs/metrics.json,1,"model_version, baseline, data, train_rows, val_rows, test_rows, category, priority, validation",False,True,,
+verticals/ticket-intelligence/ml/ticket_intelligence/outputs/notebook_error_analysis.csv,10,"ticket_id, customer_message, category, priority, predicted_category, predicted_priority, category_correct, priority_correct",True,True,0.0,
+verticals/ticket-intelligence/ml/ticket_intelligence/outputs/notebook_metrics.json,1,"model_version, baseline, dataset_mode, train_rows, test_rows, category, priority",False,True,,
+verticals/ticket-intelligence/ml/ticket_intelligence/outputs/predictions.jsonl,3,"ticket_id, category, priority, escalation_risk, confidence, routing_decision, reason, risk_signals, model_version, model_family, metadata",False,True,,
+verticals/ticket-intelligence/ml/ticket_intelligence/outputs/transformer/status.json,1,"status, reason, missing, dependency_status, next_command",False,True,,

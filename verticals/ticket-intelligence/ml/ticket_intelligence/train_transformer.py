@@ -12,11 +12,11 @@ import json
 from pathlib import Path
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
+
+from data_utils import DEFAULT_TEST_PATH, DEFAULT_TRAIN_PATH, SYNTHETIC_DATA_PATH, load_default_splits, load_smoke_split
 
 
 MODULE_DIR = Path(__file__).resolve().parent
-DATA_PATH = MODULE_DIR / "data" / "synthetic_tickets.csv"
 OUTPUT_DIR = MODULE_DIR / "outputs" / "transformer"
 
 
@@ -31,7 +31,22 @@ def _dependency_status() -> dict[str, str]:
     return status
 
 
-def train(model_name: str, data_path: Path = DATA_PATH, epochs: int = 3) -> dict:
+def _load_transformer_data(smoke_test: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    if smoke_test:
+        train_df, _, test_df = load_smoke_split()
+        return train_df, test_df, {"dataset_type": "synthetic_smoke_test", "source_dataset": str(SYNTHETIC_DATA_PATH)}
+    splits = load_default_splits()
+    if splits is None:
+        raise FileNotFoundError(
+            "Missing real train/test splits. Run create_splits.py after adding a real normalized ticket dataset. "
+            f"Expected {DEFAULT_TRAIN_PATH} and {DEFAULT_TEST_PATH}. Use --smoke-test only for synthetic checks."
+        )
+    train_df, val_df, test_df = splits
+    eval_df = val_df if val_df is not None and len(val_df) > 0 else test_df
+    return train_df, eval_df, {"dataset_type": "real_normalized_splits"}
+
+
+def train(model_name: str, epochs: int = 3, smoke_test: bool = False) -> dict:
     deps = _dependency_status()
     missing = [name for name, value in deps.items() if value.startswith("missing")]
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -58,12 +73,14 @@ def train(model_name: str, data_path: Path = DATA_PATH, epochs: int = 3) -> dict
         TrainingArguments,
     )
 
-    df = pd.read_csv(data_path)
-    labels = sorted(df["category"].unique().tolist())
+    train_df, eval_df, data_metadata = _load_transformer_data(smoke_test)
+    labels = sorted(train_df["category"].unique().tolist())
     label_to_id = {label: idx for idx, label in enumerate(labels)}
     id_to_label = {idx: label for label, idx in label_to_id.items()}
-    df["label"] = df["category"].map(label_to_id)
-    train_df, test_df = train_test_split(df, test_size=0.25, random_state=42, stratify=df["category"])
+    train_df = train_df.copy()
+    eval_df = eval_df.copy()
+    train_df["label"] = train_df["category"].map(label_to_id)
+    eval_df["label"] = eval_df["category"].map(label_to_id)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -71,7 +88,7 @@ def train(model_name: str, data_path: Path = DATA_PATH, epochs: int = 3) -> dict
         return tokenizer(batch["customer_message"], truncation=True, max_length=192)
 
     train_dataset = Dataset.from_pandas(train_df[["customer_message", "label"]]).map(tokenize, batched=True)
-    eval_dataset = Dataset.from_pandas(test_df[["customer_message", "label"]]).map(tokenize, batched=True)
+    eval_dataset = Dataset.from_pandas(eval_df[["customer_message", "label"]]).map(tokenize, batched=True)
     model = AutoModelForSequenceClassification.from_pretrained(
         model_name,
         num_labels=len(labels),
@@ -118,6 +135,7 @@ def train(model_name: str, data_path: Path = DATA_PATH, epochs: int = 3) -> dict
     status = {
         "status": "trained",
         "base_model": model_name,
+        "data": data_metadata,
         "labels": labels,
         "metrics": metrics,
     }
@@ -128,10 +146,10 @@ def train(model_name: str, data_path: Path = DATA_PATH, epochs: int = 3) -> dict
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", default="distilbert-base-uncased")
-    parser.add_argument("--data", type=Path, default=DATA_PATH)
     parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--smoke-test", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(train(args.model_name, args.data, args.epochs), indent=2))
+    print(json.dumps(train(args.model_name, args.epochs, args.smoke_test), indent=2))
 
 
 if __name__ == "__main__":

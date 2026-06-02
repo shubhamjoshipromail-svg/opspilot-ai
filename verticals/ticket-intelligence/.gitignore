@@ -7,3 +7,4 @@ __pycache__/
 ml/ticket_intelligence/outputs/transformer/checkpoint-*/
 ml/ticket_intelligence/outputs/transformer/best_model/
 ml/ticket_intelligence/outputs/notebook_*
+data/smoke_processed/

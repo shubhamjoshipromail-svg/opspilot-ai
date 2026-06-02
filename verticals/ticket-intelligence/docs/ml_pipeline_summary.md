@@ -18,14 +18,37 @@ The important design choice is that the ML model does **not** make every decisio
 
 ## Data
 
-The current dataset is [synthetic_tickets.csv](../ml/ticket_intelligence/data/synthetic_tickets.csv). It has 60 rows and four columns:
+The main training pipeline now expects real normalized ticket splits:
+
+```text
+verticals/ticket-intelligence/data/processed/train.csv
+verticals/ticket-intelligence/data/processed/val.csv
+verticals/ticket-intelligence/data/processed/test.csv
+```
+
+Those files should be created from the largest real ticket dataset found by:
+
+```bash
+python ml/ticket_intelligence/data_audit.py
+python ml/ticket_intelligence/create_splits.py
+```
+
+The preferred source dataset has columns such as:
 
 - `ticket_id`: stable ticket identifier
 - `customer_message`: messy customer-facing ticket text
-- `category`: supervised category label
-- `priority`: supervised priority label
+- `true_category`: supervised category label
+- `true_priority`: supervised priority label
+- `ticket_type`
+- `language`
+- `reference_answer`
+- `tags`
 
-Current categories:
+The split creation script canonicalizes `true_category` to `category` and `true_priority` to `priority` for model training. Labels are normalized by stripping whitespace, lowercasing, and replacing spaces/hyphens with underscores.
+
+The synthetic dataset [synthetic_tickets.csv](../ml/ticket_intelligence/data/synthetic_tickets.csv) has 60 rows and four columns. It is now reserved for smoke tests and README demo examples only.
+
+Synthetic smoke categories:
 
 - `account_access`
 - `billing_dispute`
@@ -40,17 +63,21 @@ Current priorities:
 - `medium`
 - `high`
 
-This is a starter dataset, not production data. It exists so the full pipeline can run end to end. The next real improvement is to replace or augment it with historical ticket exports.
+Do not treat synthetic smoke-test metrics as real model performance.
 
 ## Data Connection
 
-The ML scripts and notebook load the CSV directly from:
+The ML scripts first look for fixed split files:
 
 ```text
-verticals/ticket-intelligence/ml/ticket_intelligence/data/synthetic_tickets.csv
+verticals/ticket-intelligence/data/processed/train.csv
+verticals/ticket-intelligence/data/processed/val.csv
+verticals/ticket-intelligence/data/processed/test.csv
 ```
 
-The pipeline does not yet connect to the main FastAPI ticket database. That is intentional for this vertical slice: the model can be trained and evaluated offline first. In a later integration step, the backend can call the same prediction code after a ticket is created or updated.
+If those files do not exist, the main training command fails instead of silently using synthetic data. To run a smoke test, pass `--smoke-test`.
+
+The pipeline does not yet connect directly to the main FastAPI ticket database. The existing loader script [scripts/load_normalized_tickets.py](../../../scripts/load_normalized_tickets.py) can load normalized ticket CSVs into the backend database, while the ML split scripts use CSVs directly for offline training and evaluation.
 
 ## Cleaning And Normalization Used Today
 
@@ -118,7 +145,15 @@ Important settings:
 - `max_iter=1000`
 - `random_state=42`
 
-The train/test split is:
+The real-data split is:
+
+- 70% train
+- 15% validation
+- 15% test
+- `random_state=42`
+- category stratification where class counts allow it
+
+The synthetic smoke-test split is:
 
 - 75% train
 - 25% test
@@ -189,7 +224,7 @@ Current thresholds:
 
 ## Current Outcomes
 
-The checked-in baseline run uses 45 training rows and 15 test rows.
+The checked-in baseline run uses the 60-row synthetic smoke dataset because no real normalized CSV is present in this local checkout.
 
 Category model:
 
@@ -205,10 +240,11 @@ Priority model:
 
 Interpretation:
 
-- Category prediction is a reasonable first benchmark for a tiny synthetic dataset.
+- Category prediction is a reasonable smoke-test benchmark for a tiny synthetic dataset.
 - Priority prediction is weak and over-predicts `high`.
 - The priority labels need more examples and clearer labeling rules.
 - The confidence values are low, which is actually useful for this demo because the router sends uncertain cases to human review.
+- These are not real production model results.
 
 ## What The Confusion Matrix Shows
 

@@ -1,8 +1,12 @@
 {
   "model_version": "ticket-intelligence-v1",
   "baseline": "tfidf_logistic_regression",
-  "dataset": "ml/ticket_intelligence/data/synthetic_tickets.csv",
+  "data": {
+    "dataset_type": "synthetic_smoke_test",
+    "source_dataset": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/ml/ticket_intelligence/data/synthetic_tickets.csv"
+  },
   "train_rows": 45,
+  "val_rows": 0,
   "test_rows": 15,
   "category": {
     "accuracy": 0.6,
@@ -179,5 +183,6 @@
       ]
     ],
     "target": "priority"
-  }
+  },
+  "validation": null
 }
