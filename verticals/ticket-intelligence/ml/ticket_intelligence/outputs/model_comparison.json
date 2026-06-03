@@ -1,0 +1,21 @@
+{
+  "notes": {
+    "baseline": "TF-IDF + Logistic Regression benchmark on fixed splits.",
+    "tensorflow": "Keras TextVectorization + Embedding text classifiers trained on model_text.",
+    "leakage_prevention": "TextVectorization is adapted on train text only; validation is used for early stopping; test is used only for final evaluation.",
+    "risk_label_quality": "Risk labels are weak policy-derived labels, not observed escalation outcomes."
+  },
+  "baseline_category": {
+    "accuracy": 0.4409,
+    "macro_f1": 0.4121,
+    "weighted_f1": 0.443
+  },
+  "baseline_priority": {
+    "accuracy": 0.524,
+    "macro_f1": 0.5042,
+    "weighted_f1": 0.5235
+  },
+  "tensorflow_category": null,
+  "tensorflow_priority": null,
+  "tensorflow_risk": null
+}

@@ -1,0 +1,32 @@
+{
+  "label_type": "weak_policy_derived",
+  "not_ground_truth": true,
+  "rows": 23747,
+  "split_counts": {
+    "train": 16622,
+    "test": 3563,
+    "val": 3562
+  },
+  "high_risk_policy_label_distribution": {
+    "0": 12183,
+    "1": 11564
+  },
+  "urgency_signal_distribution": {
+    "0": 8627,
+    "1": 15120
+  },
+  "policy_sensitive_signal_distribution": {
+    "0": 18109,
+    "1": 5638
+  },
+  "escalation_keyword_signal_distribution": {
+    "0": 13736,
+    "1": 10011
+  },
+  "rules": {
+    "urgency_signal": "priority == high, type == Incident, or text contains urgent/outage.",
+    "policy_sensitive_signal": "tags/text contain security, data breach, fraud, compliance, legal, lawsuit, chargeback, regulator, safety.",
+    "escalation_keyword_signal": "tags/text contain configured risk keywords.",
+    "high_risk_policy_label": "policy-sensitive, escalation keyword, or high-priority incident."
+  }
+}

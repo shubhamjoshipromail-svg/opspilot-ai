@@ -4,6 +4,8 @@ pandas>=2.0
 scikit-learn>=1.4
 matplotlib>=3.8
 streamlit>=1.32
+tensorflow>=2.16
+protobuf>=6.31.1,<7
 
 # Optional transformer layer. Install when network/GPU/CPU time are available.
 torch>=2.2

@@ -2,12 +2,12 @@
   "source_dataset": "../../data/processed/tickets_en_normalized.csv",
   "random_state": 42,
   "split_strategy": "category_stratified",
-  "train_rows": 16623,
+  "train_rows": 16622,
   "val_rows": 3562,
   "test_rows": 3563,
   "train_category_distribution": {
     "technical_support": 4800,
-    "product_support": 3101,
+    "product_support": 3100,
     "customer_service": 2499,
     "it_support": 1983,
     "billing_and_payments": 1694,
@@ -42,14 +42,14 @@
     "general_inquiry": 51
   },
   "train_priority_distribution": {
-    "medium": 6790,
-    "high": 6423,
-    "low": 3410
+    "medium": 6786,
+    "high": 6419,
+    "low": 3417
   },
   "val_priority_distribution": {
-    "medium": 1474,
-    "high": 1373,
-    "low": 715
+    "medium": 1477,
+    "high": 1377,
+    "low": 708
   },
   "test_priority_distribution": {
     "medium": 1490,

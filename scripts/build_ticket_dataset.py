@@ -65,7 +65,7 @@ def _build_tags(df: pd.DataFrame) -> pd.Series:
             value = row.get(column)
             if pd.notna(value) and str(value).strip().lower() not in {"", "none", "nan"}:
                 tags.append(str(value).strip())
-        return "|".join(tags)
+        return ", ".join(tags)
 
     return df.apply(clean_tags, axis=1)
 
@@ -114,13 +114,15 @@ def normalize_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     priority_col = _first_existing(columns, ["priority", "true_priority", "urgency", "severity"])
     type_col = _first_existing(columns, ["type", "ticket_type", "request_type", "incident_type"])
     answer_col = _first_existing(columns, ["answer", "agent_answer", "resolution", "reference_answer", "response"])
+    subject_col = _first_existing(columns, ["subject", "title"])
+    body_col = _first_existing(columns, ["body", "description", "content", "customer_message", "message", "ticket_text", "text"])
 
     text_candidates = [
         column
         for column in [
             _first_existing(columns, ["customer_message", "message", "ticket_text", "text"]),
-            _first_existing(columns, ["subject", "title"]),
-            _first_existing(columns, ["body", "description", "content"]),
+            subject_col,
+            body_col,
         ]
         if column
     ]
@@ -138,19 +140,42 @@ def normalize_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     else:
         normalized["external_id"] = [f"hf-tobi-{idx + 1:06d}" for idx in range(len(df_en))]
 
+    normalized["subject"] = df_en[subject_col].map(_clean_text) if subject_col else ""
+    normalized["body"] = df_en[body_col].map(_clean_text) if body_col else normalized["subject"]
+    normalized["answer"] = df_en[answer_col].map(_clean_text) if answer_col else ""
+    normalized["type"] = df_en[type_col].map(_normalize_label) if type_col else None
+    normalized["queue"] = df_en[category_col].map(_normalize_label) if category_col else None
+    normalized["priority"] = df_en[priority_col].map(_normalize_label) if priority_col else None
+    normalized["language"] = df_en[language_col].map(_normalize_label) if language_col else "en"
+    version_col = _first_existing(columns, ["version"])
+    normalized["version"] = df_en[version_col].map(_clean_text) if version_col else ""
+    for idx in range(1, 9):
+        tag_col = _first_existing(columns, [f"tag_{idx}", f"tag{idx}"])
+        normalized[f"tag_{idx}"] = df_en[tag_col].map(_clean_text) if tag_col else ""
+    normalized["combined_tags"] = _build_tags(df_en)
     normalized["customer_message"] = _combine_text(df_en, text_candidates)
-    normalized["true_category"] = df_en[category_col].map(_normalize_label) if category_col else None
-    normalized["true_priority"] = df_en[priority_col].map(_normalize_label) if priority_col else None
+    normalized["model_text"] = (
+        normalized["customer_message"].fillna("").astype(str).str.strip()
+        + "\n\nType: "
+        + normalized["type"].fillna("").astype(str).str.strip()
+        + "\nTags: "
+        + normalized["combined_tags"].fillna("").astype(str).str.strip()
+    ).str.strip()
+    normalized["true_category"] = normalized["queue"]
+    normalized["true_priority"] = normalized["priority"]
     normalized["status"] = "new"
     normalized["channel"] = "dataset"
     normalized["source"] = DATASET_NAME
-    normalized["ticket_type"] = df_en[type_col].map(_normalize_label) if type_col else None
-    normalized["language"] = df_en[language_col].map(_normalize_label) if language_col else "en"
-    normalized["reference_answer"] = df_en[answer_col].map(_clean_text) if answer_col else None
-    normalized["tags"] = _build_tags(df_en)
+    normalized["ticket_type"] = normalized["type"]
+    normalized["reference_answer"] = normalized["answer"]
+    normalized["tags"] = normalized["combined_tags"]
 
     before_missing = len(normalized)
-    normalized = normalized[normalized["customer_message"].fillna("").astype(str).str.strip().str.len() > 0].copy()
+    normalized = normalized[
+        (normalized["body"].fillna("").astype(str).str.strip().str.len() > 0)
+        & (normalized["customer_message"].fillna("").astype(str).str.strip().str.len() > 0)
+        & (normalized["model_text"].fillna("").astype(str).str.strip().str.len() > 0)
+    ].copy()
     dropped_missing_message = before_missing - len(normalized)
 
     duplicate_count = int(normalized["customer_message"].duplicated().sum())
