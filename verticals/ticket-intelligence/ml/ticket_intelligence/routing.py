@@ -6,25 +6,46 @@ from dataclasses import dataclass
 import re
 from typing import Iterable
 
+from data_utils import MODEL_VERSION
 
-MODEL_VERSION = "ticket-intelligence-v1"
 
-ANGRY_TERMS = {
+RISK_TERMS = {
+    "legal",
+    "lawsuit",
+    "chargeback",
+    "fraud",
+    "regulator",
+    "complaint",
     "angry",
-    "furious",
-    "unacceptable",
-    "ignored",
-    "terrible",
-    "escalating",
+    "cancel",
+    "refund",
+    "charged twice",
+    "duplicate charge",
+    "manager",
     "escalate",
-    "vp",
-    "executive",
+    "escalating",
+    "urgent",
+    "today",
+    "account locked",
+    "cannot access",
+    "safety",
+    "compliance",
 }
-BILLING_TERMS = {"refund", "charged", "charge", "billing", "invoice", "dispute", "credit", "reimbursement"}
-URGENCY_TERMS = {"today", "immediately", "urgent", "blocked", "blocking", "production", "deadline", "one hour"}
-REPEAT_TERMS = {"again", "second", "twice", "three calls", "repeat", "keeps", "already"}
-LEGAL_TERMS = {"legal", "attorney", "compliance", "gdpr", "hipaa", "breach", "contract", "dpa", "soc 2"}
-SENSITIVE_CATEGORIES = {"compliance_request", "billing_dispute", "cancellation"}
+POLICY_TERMS = {
+    "legal",
+    "lawsuit",
+    "regulator",
+    "compliance",
+    "privacy",
+    "gdpr",
+    "hipaa",
+    "fraud",
+    "chargeback",
+    "safety",
+    "contract",
+}
+SENSITIVE_CATEGORIES = {"billing_and_payments", "returns_and_exchanges", "human_resources"}
+HIGH_PRIORITY_VALUES = {"high", "urgent", "critical"}
 
 
 @dataclass(frozen=True)
@@ -33,6 +54,7 @@ class RoutingResult:
     routing_decision: str
     reason: str
     risk_signals: list[str]
+    policy_sensitive: bool
 
 
 def _contains_any(text: str, terms: Iterable[str]) -> list[str]:
@@ -44,66 +66,87 @@ def _contains_any(text: str, terms: Iterable[str]) -> list[str]:
     return sorted(found)
 
 
-def score_escalation_risk(text: str, category: str | None = None, priority: str | None = None) -> tuple[float, list[str]]:
+def detect_policy_sensitivity(text: str, category: str | None = None) -> tuple[bool, list[str]]:
+    normalized = text.lower()
+    signals = _contains_any(normalized, POLICY_TERMS)
+    if category in SENSITIVE_CATEGORIES:
+        signals.append(f"sensitive_category:{category}")
+    return bool(signals), signals
+
+
+def score_escalation_risk(
+    text: str,
+    category: str | None = None,
+    priority: str | None = None,
+    category_confidence: float | None = None,
+    priority_confidence: float | None = None,
+) -> tuple[float, list[str]]:
     normalized = text.lower()
     signals: list[str] = []
-    score = 0.12
+    score = 0.1
 
-    signal_groups = [
-        ("angry language", ANGRY_TERMS, 0.19),
-        ("billing/refund dispute", BILLING_TERMS, 0.15),
-        ("urgency/business impact", URGENCY_TERMS, 0.18),
-        ("repeat issue", REPEAT_TERMS, 0.14),
-        ("legal/compliance sensitivity", LEGAL_TERMS, 0.2),
-    ]
-    for label, terms, weight in signal_groups:
-        matches = _contains_any(normalized, terms)
-        if matches:
-            score += weight
-            signals.append(f"{label}: {', '.join(matches[:3])}")
+    risk_matches = _contains_any(normalized, RISK_TERMS)
+    if risk_matches:
+        score += min(0.45, 0.08 * len(risk_matches))
+        signals.extend([f"risk_keyword:{term}" for term in risk_matches[:8]])
 
-    if category in SENSITIVE_CATEGORIES:
-        score += 0.08
-        signals.append(f"sensitive category: {category}")
-    if priority == "high":
-        score += 0.12
-        signals.append("high predicted priority")
+    policy_sensitive, policy_signals = detect_policy_sensitivity(text, category)
+    if policy_sensitive:
+        score += 0.18
+        signals.extend([f"policy:{signal}" for signal in policy_signals[:5]])
+
+    if priority in HIGH_PRIORITY_VALUES:
+        score += 0.16
+        signals.append(f"high_priority:{priority}")
     elif priority == "medium":
-        score += 0.05
-        signals.append("medium predicted priority")
+        score += 0.06
+        signals.append("medium_priority")
 
-    return round(min(score, 0.99), 2), signals
+    if category_confidence is not None and category_confidence < 0.65:
+        score += 0.08
+        signals.append("low_category_confidence")
+    if priority_confidence is not None and priority_confidence < 0.55:
+        score += 0.05
+        signals.append("low_priority_confidence")
+
+    return round(min(score, 0.99), 2), sorted(set(signals))
 
 
 def route_ticket(
     text: str,
     category: str,
     priority: str,
-    confidence: float,
-    low_confidence_threshold: float = 0.58,
-    high_risk_threshold: float = 0.72,
+    confidence: float | None = None,
+    category_confidence: float | None = None,
+    priority_confidence: float | None = None,
+    low_confidence_threshold: float = 0.65,
+    high_risk_threshold: float = 0.80,
 ) -> RoutingResult:
-    risk, signals = score_escalation_risk(text, category, priority)
+    if category_confidence is None:
+        category_confidence = confidence
+    risk, signals = score_escalation_risk(text, category, priority, category_confidence, priority_confidence)
+    policy_sensitive, policy_signals = detect_policy_sensitivity(text, category)
 
-    if category == "compliance_request" and risk >= 0.55:
+    if risk >= high_risk_threshold:
+        decision = "human_review"
+        reason = "High escalation risk requires human review before action"
+    elif policy_sensitive:
         decision = "supervisor_review"
-        reason = "Policy-sensitive ticket with compliance/legal signals"
-    elif confidence < low_confidence_threshold:
+        reason = "Policy-sensitive language or category requires supervisor review"
+    elif category_confidence is not None and category_confidence < low_confidence_threshold:
         decision = "human_review"
-        reason = "Low model confidence requires human validation"
-    elif risk >= high_risk_threshold:
+        reason = "Low category confidence requires human validation"
+    elif priority in HIGH_PRIORITY_VALUES and (priority_confidence is None or priority_confidence >= 0.55):
         decision = "priority_queue"
-        reason = "High escalation risk based on language, impact, or sensitive terms"
-    elif priority == "high":
-        decision = "human_review"
-        reason = "High-priority ticket should be checked before action"
+        reason = "High-priority prediction should be prioritized for operations review"
     else:
         decision = "auto_triage_suggestion"
-        reason = "High enough confidence with low escalation risk"
+        reason = "Confidence and risk are acceptable for an auto-triage suggestion"
 
     return RoutingResult(
         escalation_risk=risk,
         routing_decision=decision,
         reason=reason,
-        risk_signals=signals,
+        risk_signals=sorted(set(signals + [f"policy:{signal}" for signal in policy_signals])),
+        policy_sensitive=policy_sensitive,
     )

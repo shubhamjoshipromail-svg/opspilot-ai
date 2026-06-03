@@ -1,0 +1,348 @@
+{
+  "model_version": "ticket-intelligence-v1",
+  "model_type": "tfidf_logistic_regression_baseline",
+  "created_at": "2026-06-03T22:14:18.783936+00:00",
+  "random_seed": 42,
+  "data": {
+    "dataset_type": "real_normalized_splits",
+    "dataset_source": "Tobi-Bueck/customer-support-tickets",
+    "normalized_dataset_path": "/Users/shubhamjoshi/Documents/Ops-copilot/data/processed/tickets_en_normalized.csv",
+    "train_path": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/data/processed/train.csv",
+    "val_path": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/data/processed/val.csv",
+    "test_path": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/data/processed/test.csv"
+  },
+  "row_counts": {
+    "train": 16623,
+    "validation": 3562,
+    "test": 3563
+  },
+  "labels": {
+    "category": [
+      "billing_and_payments",
+      "customer_service",
+      "general_inquiry",
+      "human_resources",
+      "it_support",
+      "product_support",
+      "returns_and_exchanges",
+      "sales_and_pre_sales",
+      "service_outages_and_maintenance",
+      "technical_support"
+    ],
+    "priority": [
+      "high",
+      "low",
+      "medium"
+    ]
+  },
+  "artifacts": {
+    "category_model": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/ml/ticket_intelligence/artifacts/category_model.pkl",
+    "priority_model": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/ml/ticket_intelligence/artifacts/priority_model.pkl"
+  },
+  "tfidf_settings": {
+    "lowercase": true,
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 1,
+    "max_features": 5000,
+    "strip_accents": "unicode"
+  },
+  "logistic_regression_settings": {
+    "max_iter": 1000,
+    "class_weight": "balanced",
+    "solver": "liblinear",
+    "random_state": 42
+  },
+  "validation_metrics": {
+    "category": {
+      "accuracy": 0.4309,
+      "macro_f1": 0.4055,
+      "weighted_f1": 0.4317,
+      "labels": [
+        "billing_and_payments",
+        "customer_service",
+        "general_inquiry",
+        "human_resources",
+        "it_support",
+        "product_support",
+        "returns_and_exchanges",
+        "sales_and_pre_sales",
+        "service_outages_and_maintenance",
+        "technical_support"
+      ],
+      "classification_report": {
+        "billing_and_payments": {
+          "precision": 0.76,
+          "recall": 0.7327823691460055,
+          "f1-score": 0.7461430575035063,
+          "support": 363.0
+        },
+        "customer_service": {
+          "precision": 0.35785288270377735,
+          "recall": 0.3364485981308411,
+          "f1-score": 0.3468208092485549,
+          "support": 535.0
+        },
+        "general_inquiry": {
+          "precision": 0.1875,
+          "recall": 0.34615384615384615,
+          "f1-score": 0.24324324324324326,
+          "support": 52.0
+        },
+        "human_resources": {
+          "precision": 0.3211009174311927,
+          "recall": 0.5072463768115942,
+          "f1-score": 0.39325842696629215,
+          "support": 69.0
+        },
+        "it_support": {
+          "precision": 0.36597938144329895,
+          "recall": 0.3341176470588235,
+          "f1-score": 0.34932349323493234,
+          "support": 425.0
+        },
+        "product_support": {
+          "precision": 0.40652173913043477,
+          "recall": 0.2816265060240964,
+          "f1-score": 0.33274021352313166,
+          "support": 664.0
+        },
+        "returns_and_exchanges": {
+          "precision": 0.2978723404255319,
+          "recall": 0.3977272727272727,
+          "f1-score": 0.340632603406326,
+          "support": 176.0
+        },
+        "sales_and_pre_sales": {
+          "precision": 0.2311111111111111,
+          "recall": 0.47706422018348627,
+          "f1-score": 0.31137724550898205,
+          "support": 109.0
+        },
+        "service_outages_and_maintenance": {
+          "precision": 0.43956043956043955,
+          "recall": 0.5714285714285714,
+          "f1-score": 0.4968944099378882,
+          "support": 140.0
+        },
+        "technical_support": {
+          "precision": 0.4980276134122288,
+          "recall": 0.49076773566569487,
+          "f1-score": 0.4943710230053842,
+          "support": 1029.0
+        },
+        "accuracy": 0.4309376754632229,
+        "macro avg": {
+          "precision": 0.38655264252180155,
+          "recall": 0.4475363143330232,
+          "f1-score": 0.4054804525578241,
+          "support": 3562.0
+        },
+        "weighted avg": {
+          "precision": 0.44254195570211496,
+          "recall": 0.4309376754632229,
+          "f1-score": 0.431709429354047,
+          "support": 3562.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          266,
+          31,
+          5,
+          4,
+          8,
+          8,
+          10,
+          11,
+          2,
+          18
+        ],
+        [
+          22,
+          180,
+          22,
+          16,
+          37,
+          66,
+          39,
+          38,
+          7,
+          108
+        ],
+        [
+          0,
+          11,
+          18,
+          1,
+          2,
+          2,
+          7,
+          3,
+          1,
+          7
+        ],
+        [
+          2,
+          8,
+          0,
+          35,
+          5,
+          6,
+          3,
+          3,
+          0,
+          7
+        ],
+        [
+          10,
+          40,
+          8,
+          4,
+          142,
+          30,
+          14,
+          19,
+          27,
+          131
+        ],
+        [
+          17,
+          78,
+          14,
+          21,
+          58,
+          187,
+          44,
+          39,
+          18,
+          188
+        ],
+        [
+          7,
+          25,
+          4,
+          7,
+          9,
+          20,
+          70,
+          10,
+          2,
+          22
+        ],
+        [
+          1,
+          17,
+          0,
+          1,
+          4,
+          12,
+          7,
+          52,
+          4,
+          11
+        ],
+        [
+          1,
+          9,
+          4,
+          1,
+          14,
+          7,
+          2,
+          5,
+          80,
+          17
+        ],
+        [
+          24,
+          104,
+          21,
+          19,
+          109,
+          122,
+          39,
+          45,
+          41,
+          505
+        ]
+      ],
+      "target": "category"
+    },
+    "priority": {
+      "accuracy": 0.5295,
+      "macro_f1": 0.5092,
+      "weighted_f1": 0.5298,
+      "labels": [
+        "high",
+        "low",
+        "medium"
+      ],
+      "classification_report": {
+        "high": {
+          "precision": 0.5858433734939759,
+          "recall": 0.5666423889293518,
+          "f1-score": 0.5760829322473158,
+          "support": 1373.0
+        },
+        "low": {
+          "precision": 0.40110650069156295,
+          "recall": 0.40559440559440557,
+          "f1-score": 0.40333796940194716,
+          "support": 715.0
+        },
+        "medium": {
+          "precision": 0.5413633355393779,
+          "recall": 0.5549525101763908,
+          "f1-score": 0.5480737018425461,
+          "support": 1474.0
+        },
+        "accuracy": 0.5294778214486243,
+        "macro avg": {
+          "precision": 0.5094377365749723,
+          "recall": 0.5090631015667161,
+          "f1-score": 0.509164867830603,
+          "support": 3562.0
+        },
+        "weighted avg": {
+          "precision": 0.5303547603556259,
+          "recall": 0.5294778214486243,
+          "f1-score": 0.5298172797905306,
+          "support": 3562.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          778,
+          161,
+          434
+        ],
+        [
+          166,
+          290,
+          259
+        ],
+        [
+          384,
+          272,
+          818
+        ]
+      ],
+      "target": "priority"
+    }
+  },
+  "test_metrics": {
+    "category": {
+      "accuracy": 0.4415,
+      "macro_f1": 0.4133,
+      "weighted_f1": 0.4441
+    },
+    "priority": {
+      "accuracy": 0.524,
+      "macro_f1": 0.5048,
+      "weighted_f1": 0.5236
+    }
+  }
+}

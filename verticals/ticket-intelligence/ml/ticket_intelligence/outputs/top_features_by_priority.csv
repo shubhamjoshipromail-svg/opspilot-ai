@@ -1,0 +1,76 @@
+class,rank,feature,weight
+high,1,critical,3.195673
+high,2,technical,2.484588
+high,3,immediate,2.30382
+high,4,system,2.234099
+high,5,urgent,2.167616
+high,6,compromised,2.091564
+high,7,outage,1.976474
+high,8,loss,1.906925
+high,9,crashed,1.905296
+high,10,data loss,1.892054
+high,11,crash,1.886946
+high,12,urgently,1.878172
+high,13,the servers,1.841187
+high,14,sensitive medical,1.839743
+high,15,crashes,1.763896
+high,16,severe,1.697548
+high,17,leading to,1.662031
+high,18,scalability and,1.654915
+high,19,system crashes,1.632431
+high,20,affecting,1.610246
+high,21,significant,1.577434
+high,22,capacity,1.56034
+high,23,ad,1.527807
+high,24,address this,1.520146
+high,25,outages,1.508939
+low,1,sporadic,2.783451
+low,2,outdated,2.699619
+low,3,alert,2.606724
+low,4,intermittent,2.600457
+low,5,desktop,2.365292
+low,6,terraform,2.323239
+low,7,ifttt,2.318935
+low,8,scanner,2.083173
+low,9,all,1.998683
+low,10,attention to,1.959056
+low,11,additional security,1.952081
+low,12,slow,1.949708
+low,13,with the,1.934776
+low,14,observed,1.913263
+low,15,devices the,1.900634
+low,16,configuration errors,1.898711
+low,17,troubleshooting,1.896144
+low,18,media engagement,1.876963
+low,19,keras,1.848348
+low,20,slow performance,1.838585
+low,21,likely,1.808416
+low,22,with medical,1.806206
+low,23,is facing,1.802793
+low,24,access problems,1.786381
+low,25,updates to,1.770712
+medium,1,agency has,1.886153
+medium,2,customer interaction,1.699947
+medium,3,import,1.68089
+medium,4,connections and,1.647892
+medium,5,antivirus,1.612096
+medium,6,connecting,1.610215
+medium,7,plan,1.577567
+medium,8,sporadic,1.575422
+medium,9,of investment,1.522475
+medium,10,strategies that,1.508588
+medium,11,in billing,1.491143
+medium,12,problems with,1.455516
+medium,13,collaboration,1.410295
+medium,14,an error,1.351083
+medium,15,occasional,1.348089
+medium,16,connectivity,1.343198
+medium,17,updates the,1.337885
+medium,18,intermittent,1.331841
+medium,19,instability,1.32555
+medium,20,misconfiguration,1.310675
+medium,21,controller,1.30227
+medium,22,suspect,1.290428
+medium,23,most recent,1.285299
+medium,24,credentials,1.280262
+medium,25,on best,1.261268

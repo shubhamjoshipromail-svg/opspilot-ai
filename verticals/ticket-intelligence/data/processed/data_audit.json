@@ -1,6 +1,109 @@
 {
   "dataset_files": [
     {
+      "file_path": "data/processed/tickets_en_normalized.csv",
+      "row_count": 23748,
+      "columns": [
+        "external_id",
+        "customer_message",
+        "true_category",
+        "true_priority",
+        "status",
+        "channel",
+        "source",
+        "ticket_type",
+        "language",
+        "reference_answer",
+        "tags"
+      ],
+      "missing_values_for_key_fields": {
+        "customer_message": 0,
+        "true_category": 0,
+        "true_priority": 0,
+        "ticket_type": 0,
+        "language": 0,
+        "reference_answer": 5,
+        "tags": 0
+      },
+      "category_distribution": {
+        "Technical Support": 6858,
+        "Product Support": 4430,
+        "Customer Service": 3570,
+        "IT Support": 2833,
+        "Billing and Payments": 2420,
+        "Returns and Exchanges": 1173,
+        "Service Outages and Maintenance": 937,
+        "Sales and Pre-Sales": 724,
+        "Human Resources": 461,
+        "General Inquiry": 342
+      },
+      "priority_distribution": {
+        "medium": 9754,
+        "high": 9149,
+        "low": 4845
+      },
+      "duplicate_customer_message_count": 0,
+      "language_distribution": {
+        "en": 23748
+      },
+      "has_required_training_columns": true,
+      "is_smoke_or_generated_output": false
+    },
+    {
+      "file_path": "data/raw/customer_support_tickets_en.csv",
+      "row_count": 28261,
+      "columns": [
+        "subject",
+        "body",
+        "answer",
+        "type",
+        "queue",
+        "priority",
+        "language",
+        "version",
+        "tag_1",
+        "tag_2",
+        "tag_3",
+        "tag_4",
+        "tag_5",
+        "tag_6",
+        "tag_7",
+        "tag_8"
+      ],
+      "missing_values_for_key_fields": {
+        "customer_message": null,
+        "true_category": null,
+        "true_priority": null,
+        "ticket_type": null,
+        "language": 0,
+        "reference_answer": null,
+        "tags": null
+      },
+      "category_distribution": {
+        "Technical Support": 8149,
+        "Product Support": 5305,
+        "Customer Service": 4269,
+        "IT Support": 3333,
+        "Billing and Payments": 2897,
+        "Returns and Exchanges": 1402,
+        "Service Outages and Maintenance": 1106,
+        "Sales and Pre-Sales": 843,
+        "Human Resources": 553,
+        "General Inquiry": 404
+      },
+      "priority_distribution": {
+        "medium": 11570,
+        "high": 10917,
+        "low": 5774
+      },
+      "duplicate_customer_message_count": 4595,
+      "language_distribution": {
+        "en": 28261
+      },
+      "has_required_training_columns": true,
+      "is_smoke_or_generated_output": false
+    },
+    {
       "file_path": "verticals/ticket-intelligence/examples/sample_prediction.json",
       "row_count": 1,
       "columns": [

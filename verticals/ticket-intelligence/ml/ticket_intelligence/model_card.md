@@ -2,48 +2,110 @@
 
 ## Model Details
 
-- Model version: `ticket-intelligence-v1`
-- Baseline: TF-IDF vectorizer plus logistic regression
-- Transformer layer: `train_transformer.py` supports DistilBERT/MiniLM-style fine-tuning when optional dependencies are installed
-- Outputs: ticket category, priority, confidence, escalation risk, routing decision, explanation, metadata
+- Model name: OpsPilot Ticket Intelligence v1
+- Version: `ticket-intelligence-v1`
+- Model type: TF-IDF vectorization plus Logistic Regression classifiers
+- Tasks:
+  - Ticket category / queue classification
+  - Priority prediction
+  - Escalation-risk scoring and routing via deterministic rules
+- Language scope: English-only v1
 
 ## Intended Use
 
-This module is intended to assist operations teams with messy support-ticket triage. It can suggest a category, estimate urgency, flag escalation risk, and route cases to a queue such as human review, supervisor review, or auto-triage suggestion.
+OpsPilot Ticket Intelligence v1 is intended for AI-assisted triage of English-language support and operations tickets. It suggests a category, predicts priority, estimates escalation risk, and recommends whether a ticket can be auto-triaged or should go to human/supervisor review.
 
-## Not Intended For
+## Not Intended Use
 
-- Automatic final decisions on refunds, cancellations, compliance responses, or account enforcement
-- Replacing trained support, legal, compliance, or operations staff
-- High-stakes use without human oversight and production monitoring
+This model is not intended for automatic final decisions, refunds, legal or compliance judgments, account enforcement, or customer-facing action without human review.
 
-## Training Data
+## Dataset
 
-The starter dataset is synthetic and designed to exercise operational scenarios across billing disputes, technical issues, account access, cancellations, shipping delays, and compliance requests. It should be replaced or augmented with real historical tickets before production use.
+The dataset is regenerated from the public labeled customer-support ticket dataset `Tobi-Bueck/customer-support-tickets`. The pipeline filters to English tickets only, normalizes fields, removes exact duplicate customer messages, and writes:
 
-## Evaluation
+- `data/raw/customer_support_tickets_en.csv`
+- `data/processed/tickets_en_normalized.csv`
 
-The baseline produces:
+The normalized dataset includes:
 
-- Accuracy
-- Macro-F1
-- Per-class precision, recall, and F1
-- Confusion matrix
-- Error examples
+- `external_id`
+- `customer_message`
+- `true_category`
+- `true_priority`
+- `status`
+- `channel`
+- `source`
+- `ticket_type`
+- `language`
+- `reference_answer`
+- `tags`
 
-Artifacts are saved under `ml/ticket_intelligence/outputs/`.
+This is a public external benchmark/source dataset, not private customer data.
+
+## Labels
+
+- Category label: normalized from the dataset queue/category field.
+- Priority label: normalized from the dataset priority field.
+
+## Current Metrics
+
+Current fixed-split test results:
+
+- Category accuracy: `0.4415`
+- Category macro-F1: `0.4133`
+- Category weighted-F1: `0.4441`
+- Priority accuracy: `0.5240`
+- Priority macro-F1: `0.5048`
+- Priority weighted-F1: `0.5236`
+
+Priority is a text-only baseline. In real operations systems, priority often depends on metadata such as customer tier, SLA, recurrence, account value, incident severity, or operational impact.
 
 ## Human Oversight Policy
 
-The router sends tickets to human review when model confidence is low, escalation risk is high, priority is high, or the ticket contains policy-sensitive compliance/legal language. The model should be treated as decision support, not an autonomous operations agent.
+The system routes tickets to human or supervisor review when:
+
+- category confidence is low
+- escalation risk is high
+- policy-sensitive language is detected
+- high-risk terms such as legal, fraud, chargeback, regulator, safety, or compliance appear
+
+The output is decision support, not an autonomous operations decision.
 
 ## Limitations
 
-- Synthetic training data is not representative of all customer language.
-- Confidence scores from logistic regression are useful for routing thresholds but are not calibrated probabilities.
-- Rule-based escalation scoring may miss implicit anger, sarcasm, or organization-specific risk.
-- The transformer script requires optional dependencies and real compute/network access to fine-tune.
+- English-only v1.
+- TF-IDF features cannot deeply understand context or long-range semantics.
+- Labels may overlap, especially between technical support, product support, IT support, and customer service.
+- Priority prediction is limited because many priority decisions require non-text metadata.
+- Rule-based escalation risk may miss subtle dissatisfaction, sarcasm, or organization-specific risk signals.
+- Dataset distribution may not match a specific company’s live support queue.
 
-## Responsible AI Notes
+## Failure Modes
 
-Production use should include drift monitoring, calibration, periodic human review of routed outcomes, bias checks across customer segments, and an appeals path for customer-impacting decisions.
+- Confusing overlapping support queues.
+- Over-prioritizing messages with urgent wording but low operational impact.
+- Under-prioritizing tickets that look neutral but come from high-value or SLA-bound customers.
+- Mistaking policy-sensitive terms as ordinary support requests.
+- Learning shortcuts from tags, phrases, or queue-specific vocabulary.
+
+## Monitoring Plan
+
+Track:
+
+- category and priority macro-F1
+- per-class recall for high-risk queues
+- confidence distribution
+- human-review rate
+- override rate
+- escalation misses
+- high-risk tickets auto-triaged by mistake
+- drift in category, priority, and language distributions
+
+## Future Work
+
+- Calibrate model confidence.
+- Add operational metadata for priority and escalation risk.
+- Fine-tune a lightweight transformer benchmark.
+- Add multilingual support with either language detection plus language-specific models or multilingual transformer models such as XLM-R or multilingual DistilBERT.
+- Integrate with FastAPI ticket creation and human review tables.
+- Add policy retrieval/RAG after the core triage pipeline is stable.

@@ -1,430 +1,225 @@
 # OpsPilot Ticket Intelligence ML Pipeline Summary
 
-This document explains the current Ticket Intelligence vertical in plain English: what models exist, how data flows through them, what cleaning and normalization happens, current outcomes, and how to improve the pipeline over time.
+## Purpose
 
-## Current Goal
+OpsPilot Ticket Intelligence is a reproducible English-language ML baseline for operations ticket triage. It classifies ticket category, predicts priority, scores escalation risk, and routes uncertain or high-risk tickets to human review.
 
-OpsPilot Ticket Intelligence is a decision-support layer for messy operations tickets. Given a raw customer message, it returns:
+The model assists triage. It does not make final customer, refund, legal, compliance, or account decisions.
 
-- predicted ticket category
-- predicted priority
-- escalation risk
-- confidence score
-- routing decision
-- short routing explanation
-- model/version metadata
+## Dataset Source
 
-The important design choice is that the ML model does **not** make every decision. The model predicts category and priority. Then rule-based risk and confidence logic routes the ticket to human review, supervisor review, a priority queue, or an auto-triage suggestion.
-
-## Data
-
-The main training pipeline now expects real normalized ticket splits:
+The pipeline uses the public labeled customer-support dataset:
 
 ```text
-verticals/ticket-intelligence/data/processed/train.csv
-verticals/ticket-intelligence/data/processed/val.csv
-verticals/ticket-intelligence/data/processed/test.csv
+Tobi-Bueck/customer-support-tickets
 ```
 
-Those files should be created from the largest real ticket dataset found by:
+This dataset was selected because it is ticket/helpdesk oriented and includes text, queue/category labels, priority labels, language, ticket type, tags, and support answers. It fits OpsPilot’s routing and operations-review use case better than chatbot-intent-only datasets.
+
+This is a public external benchmark/source dataset, not real private customer data.
+
+## English-Only Scope
+
+Version 1 filters to English tickets only. This keeps TF-IDF features interpretable and makes category/priority metrics easier to explain.
+
+Future multilingual support can use language detection with language-specific models or multilingual transformers such as XLM-R or multilingual DistilBERT.
+
+## Data Regeneration
+
+From the repo root:
 
 ```bash
-python ml/ticket_intelligence/data_audit.py
-python ml/ticket_intelligence/create_splits.py
+python scripts/build_ticket_dataset.py
 ```
 
-The preferred source dataset has columns such as:
+This writes:
 
-- `ticket_id`: stable ticket identifier
-- `customer_message`: messy customer-facing ticket text
-- `true_category`: supervised category label
-- `true_priority`: supervised priority label
+```text
+data/raw/customer_support_tickets_en.csv
+data/processed/tickets_en_normalized.csv
+```
+
+The normalized file includes:
+
+- `external_id`
+- `customer_message`
+- `true_category`
+- `true_priority`
+- `status`
+- `channel`
+- `source`
 - `ticket_type`
 - `language`
 - `reference_answer`
 - `tags`
 
-The split creation script canonicalizes `true_category` to `category` and `true_priority` to `priority` for model training. Labels are normalized by stripping whitespace, lowercasing, and replacing spaces/hyphens with underscores.
+The build script drops rows missing `customer_message`, removes exact duplicate customer messages, validates English-only rows when `language` exists, and fails clearly if labels cannot be created.
 
-The synthetic dataset [synthetic_tickets.csv](../ml/ticket_intelligence/data/synthetic_tickets.csv) has 60 rows and four columns. It is now reserved for smoke tests and README demo examples only.
+Current regenerated dataset:
 
-Synthetic smoke categories:
+- Source rows: `61,765`
+- English rows before duplicate removal: `28,261`
+- Normalized rows after duplicate removal: `23,748`
 
-- `account_access`
-- `billing_dispute`
-- `cancellation`
-- `compliance_request`
-- `shipping_delay`
-- `technical_issue`
+## Splits
 
-Current priorities:
+From `verticals/ticket-intelligence`:
 
-- `low`
-- `medium`
-- `high`
-
-Do not treat synthetic smoke-test metrics as real model performance.
-
-## Data Connection
-
-The ML scripts first look for fixed split files:
-
-```text
-verticals/ticket-intelligence/data/processed/train.csv
-verticals/ticket-intelligence/data/processed/val.csv
-verticals/ticket-intelligence/data/processed/test.csv
+```bash
+python ml/ticket_intelligence/create_splits.py --input ../../data/processed/tickets_en_normalized.csv
 ```
 
-If those files do not exist, the main training command fails instead of silently using synthetic data. To run a smoke test, pass `--smoke-test`.
+This writes fixed splits:
 
-The pipeline does not yet connect directly to the main FastAPI ticket database. The existing loader script [scripts/load_normalized_tickets.py](../../../scripts/load_normalized_tickets.py) can load normalized ticket CSVs into the backend database, while the ML split scripts use CSVs directly for offline training and evaluation.
+- `data/processed/train.csv`
+- `data/processed/val.csv`
+- `data/processed/test.csv`
 
-## Cleaning And Normalization Used Today
+Current split:
 
-Current baseline cleaning is intentionally light:
+- Train: `16,623`
+- Validation: `3,562`
+- Test: `3,563`
 
-- `TfidfVectorizer(lowercase=True)` lowercases text inside the vectorizer.
-- `strip_accents="unicode"` normalizes accented characters.
-- `ngram_range=(1, 2)` captures unigrams and two-word phrases.
-- No stemming or lemmatization is currently used.
-- No stop-word removal is currently used.
-- No aggressive punctuation stripping is used before modeling.
+The split uses `random_state=42` and category stratification where possible.
 
-The routing layer separately normalizes text with:
+## Model
 
-```python
-normalized = text.lower()
-```
+Two baseline classifiers are trained:
 
-That lowercased text is used to detect risk keywords such as refund, dispute, urgent, legal, GDPR, repeat issue terms, and angry language.
+- category classifier
+- priority classifier
 
-## Why Cleaning Is Light
-
-For short support tickets, too much cleaning can remove useful signal. Words like "not", "again", "today", "refund", "legal", "blocked", and "cancel" matter. A simple TF-IDF baseline often works better when the original text shape is mostly preserved.
-
-That said, the notebook includes an optional `normalize_text()` function so you can experiment with:
-
-- lowercasing
-- Unicode normalization
-- URL replacement
-- email replacement
-- number replacement
-- punctuation spacing
-- whitespace cleanup
-
-## Baseline Model
-
-The main trained model is:
+Model type:
 
 ```text
 TF-IDF + Logistic Regression
 ```
 
-There are two separate classifiers:
+TF-IDF settings:
 
-1. Category classifier: predicts `category`
-2. Priority classifier: predicts `priority`
+- lowercase: `True`
+- n-grams: `(1, 2)`
+- min_df: `1`
+- max_features: `5000`
+- strip_accents: `unicode`
 
-The pipeline is:
+Logistic regression settings:
 
-```text
-customer_message
-  -> TF-IDF vectorizer
-  -> LogisticRegression(class_weight="balanced")
-  -> predicted label + class probabilities
+- solver: `liblinear`
+- class_weight: `balanced`
+- max_iter: `1000`
+- random_state: `42`
+
+Artifacts:
+
+- `ml/ticket_intelligence/artifacts/category_model.pkl`
+- `ml/ticket_intelligence/artifacts/priority_model.pkl`
+- `ml/ticket_intelligence/artifacts/model_metadata.json`
+
+## Evaluation
+
+Run:
+
+```bash
+python ml/ticket_intelligence/evaluate.py
 ```
 
-Important settings:
+Outputs:
 
-- `ngram_range=(1, 2)`
-- `min_df=1`
-- `max_features=5000`
-- `strip_accents="unicode"`
-- `class_weight="balanced"`
-- `solver="liblinear"`
-- `max_iter=1000`
-- `random_state=42`
+- `outputs/metrics.json`
+- `outputs/category_classification_report.csv`
+- `outputs/priority_classification_report.csv`
+- `outputs/category_confusion_matrix.png`
+- `outputs/priority_confusion_matrix.png`
+- `outputs/error_analysis.csv`
 
-The real-data split is:
+Current test metrics:
 
-- 70% train
-- 15% validation
-- 15% test
-- `random_state=42`
-- category stratification where class counts allow it
+| Target | Accuracy | Macro-F1 | Weighted-F1 |
+| --- | ---: | ---: | ---: |
+| Category | 0.4415 | 0.4133 | 0.4441 |
+| Priority | 0.5240 | 0.5048 | 0.5236 |
 
-The synthetic smoke-test split is:
+These are honest baseline metrics. Category labels overlap in support data, and text-only priority prediction is limited because real priority often depends on metadata.
 
-- 75% train
-- 25% test
-- stratified by category
-- `random_state=42`
+## Feature Inspection
 
-## Confidence
+Run:
 
-The baseline confidence is the maximum predicted probability from logistic regression. The final confidence returned by the prediction function is:
-
-```python
-min(category_confidence, priority_confidence)
+```bash
+python ml/ticket_intelligence/feature_inspection.py
 ```
 
-That is conservative. If either category or priority is uncertain, the whole triage recommendation is treated as uncertain.
+Outputs:
 
-Important limitation: logistic regression probabilities are not calibrated yet. They are useful for rough routing thresholds, but they should be calibrated before production use.
+- `outputs/top_features_by_category.csv`
+- `outputs/top_features_by_priority.csv`
 
-## Low-Confidence Lexical Fallback
+This helps explain what terms the TF-IDF/logistic model associates with each class.
 
-The prediction layer includes a small safety fallback:
+## Error Analysis
 
-If the category model confidence is below `0.40`, and multiple category-specific keywords strongly indicate a different category, the output category can be overridden.
+Run:
 
-Example: if the raw model predicts `technical_issue` with very low confidence, but the text contains terms like `charged`, `refund`, and `billing`, the final category may become `billing_dispute`.
-
-The raw model output is still preserved in metadata:
-
-- `raw_model_category`
-- `category_source`
-- `category_hint_score`
-- `category_distribution`
-
-This makes the fallback auditable instead of hidden.
-
-## Escalation Risk Model
-
-Escalation risk is rule-based today. It starts with a base score of `0.12`, then adds weight for signals:
-
-- angry language: `+0.19`
-- billing/refund dispute terms: `+0.15`
-- urgency or business impact: `+0.18`
-- repeat issue language: `+0.14`
-- legal/compliance sensitivity: `+0.20`
-- sensitive category: `+0.08`
-- high predicted priority: `+0.12`
-- medium predicted priority: `+0.05`
-
-The final score is capped at `0.99`.
-
-This is not a trained risk model yet. It is a transparent first version that works well for human-in-the-loop routing and makes it easy to explain why a ticket was flagged.
-
-## Routing Logic
-
-The router uses category, priority, confidence, and escalation risk.
-
-Current decisions:
-
-- `supervisor_review`: compliance-sensitive ticket with enough risk
-- `human_review`: low confidence or high priority
-- `priority_queue`: high escalation risk
-- `auto_triage_suggestion`: high enough confidence and low risk
-
-Current thresholds:
-
-- low confidence threshold: `0.58`
-- high risk threshold: `0.72`
-
-## Current Outcomes
-
-The checked-in baseline run uses the 60-row synthetic smoke dataset because no real normalized CSV is present in this local checkout.
-
-Category model:
-
-- accuracy: `0.60`
-- macro-F1: `0.60`
-- weighted-F1: `0.5978`
-
-Priority model:
-
-- accuracy: `0.4667`
-- macro-F1: `0.2741`
-- weighted-F1: `0.3585`
-
-Interpretation:
-
-- Category prediction is a reasonable smoke-test benchmark for a tiny synthetic dataset.
-- Priority prediction is weak and over-predicts `high`.
-- The priority labels need more examples and clearer labeling rules.
-- The confidence values are low, which is actually useful for this demo because the router sends uncertain cases to human review.
-- These are not real production model results.
-
-## What The Confusion Matrix Shows
-
-The category model correctly predicts all three `account_access` test examples, but it confuses several other classes with `account_access`. This likely happens because the dataset is tiny and many messages share generic support language.
-
-The priority model predicts most test examples as `high`. This is common when:
-
-- the dataset is small
-- class labels are imbalanced
-- many messages contain urgency-like words
-- the model has too little evidence to separate `medium` from `high`
-
-## Transformer Layer
-
-The repo includes [train_transformer.py](../ml/ticket_intelligence/train_transformer.py). It is transformer-ready but was not trained in this environment because `torch` and `transformers` were not installed.
-
-The intended second layer is:
-
-```text
-DistilBERT or MiniLM sequence classifier
-```
-
-Input:
-
-```text
-customer_message
+```bash
+python ml/ticket_intelligence/error_analysis.py
 ```
 
 Output:
 
-```text
-category
+- `outputs/error_analysis.csv`
+
+The file includes true/predicted labels, confidences, and simple likely-reason tags such as `low_confidence`, `label_overlap`, `multiple_intents`, and `priority_depends_on_metadata`.
+
+## Routing And Thresholds
+
+Routing combines:
+
+- category confidence
+- priority confidence
+- risk keywords
+- policy-sensitive signals
+- high-priority prediction
+
+Run:
+
+```bash
+python ml/ticket_intelligence/threshold_sweep.py
 ```
 
-Priority can be added later as:
+Output:
 
-- a second classifier
-- a multi-task model head
-- a rule-based mapping from category/risk/business impact
+- `outputs/threshold_sweep.csv`
 
-## How To Improve The Pipeline
+The sweep shows the operational tradeoff between auto-triage rate and human-review rate. At higher thresholds, fewer tickets are auto-triaged, but accuracy on auto-triaged tickets improves.
 
-### 1. Better Data
+## Structured Prediction
 
-The biggest improvement will come from real data:
+Run:
 
-- export historical tickets
-- remove duplicates
-- keep original customer language
-- add final resolved category
-- add true priority based on SLA or business outcome
-- include escalation outcome if available
-- include metadata such as account tier, ticket age, repeat count, channel, and product area
-
-### 2. Better Labeling
-
-Priority needs a clearer definition. For example:
-
-- `high`: production outage, legal threat, refund dispute with escalation, executive customer, SLA breach
-- `medium`: important but not immediately business-blocking
-- `low`: informational, admin, simple update
-
-Without strict labeling rules, the model cannot learn stable priority boundaries.
-
-### 3. Better Normalization
-
-Try controlled normalization experiments:
-
-- replace URLs with `<URL>`
-- replace emails with `<EMAIL>`
-- replace ticket/order/invoice numbers with `<NUMBER>`
-- normalize repeated punctuation
-- keep negation words
-- keep domain terms
-- compare with and without stop-word removal
-
-Do not blindly stem or remove too much punctuation until metrics prove it helps.
-
-### 4. Hyperparameter Tuning
-
-Good baseline experiments:
-
-- `ngram_range`: `(1, 1)`, `(1, 2)`, `(1, 3)`
-- `max_features`: `1000`, `3000`, `5000`, `10000`
-- `min_df`: `1`, `2`
-- logistic regression `C`: `0.3`, `1`, `3`, `10`
-- solvers: `liblinear`, `lbfgs`
-- compare `class_weight=None` vs `balanced`
-
-Also compare:
-
-- Linear SVM
-- Complement Naive Bayes
-- calibrated logistic regression
-
-### 5. Confidence Calibration
-
-Use calibration before relying on thresholds:
-
-- `CalibratedClassifierCV`
-- reliability curves
-- expected calibration error
-- threshold tuning on validation data
-
-The goal is for a `0.75` confidence prediction to be correct roughly 75% of the time.
-
-### 6. Risk Model Upgrade
-
-Move from fixed rules to supervised risk prediction once labels exist:
-
-- target: escalated/not escalated
-- features: text, category, priority, customer tier, repeat count, ticket age, sentiment, policy-sensitive terms
-- models: logistic regression, gradient boosting, random forest, XGBoost/LightGBM if available
-
-Keep rules as guardrails even after adding ML risk scoring.
-
-### 7. Transformer Fine-Tuning
-
-Once dependencies and data are available:
-
-- start with `distilbert-base-uncased` or a small MiniLM classifier
-- fine-tune category first
-- compare macro-F1 against baseline
-- use early stopping
-- track per-class recall
-- avoid overfitting tiny synthetic data
-
-Transformer fine-tuning is most valuable after you have at least a few hundred labeled examples per major class.
-
-### 8. Pretraining Or Domain Adaptation
-
-If you eventually have lots of unlabeled ticket text:
-
-- continue masked-language-model pretraining on internal ticket text
-- then fine-tune on category labels
-- compare against plain DistilBERT/MiniLM
-
-This is useful when support language contains lots of domain-specific product terms, acronyms, and workflow phrases.
-
-### 9. Post-Training Evaluation
-
-Add model checks after training:
-
-- error review by category
-- confidence distribution by class
-- threshold sweep for human review
-- false-negative escalation review
-- slice metrics by ticket channel, customer tier, language, and category
-- monitor override rate after humans correct predictions
-
-### 10. Product Integration
-
-The next integration step is to connect the vertical to the existing backend:
-
-```text
-POST /tickets
-  -> save ticket
-  -> run triage prediction
-  -> save triage result
-  -> return ticket + triage
+```bash
+python ml/ticket_intelligence/predict.py
 ```
 
-Longer term, add database tables for:
+The output is model-versioned JSON with nested category, priority, risk, routing, and metadata fields.
 
-- `triage_predictions`
-- `risk_scores`
-- `human_reviews`
-- `model_versions`
-- `evaluation_traces`
+## Synthetic Data
 
-## Bottom Line
+`ml/ticket_intelligence/data/synthetic_tickets.csv` is reserved for smoke tests and README demos only:
 
-The current version is a strong portfolio slice because it is more than a classifier:
+```bash
+python ml/ticket_intelligence/train_baseline.py --smoke-test
+```
 
-- it trains a baseline model
-- saves metrics and artifacts
-- exposes prediction outputs
-- scores escalation risk
-- routes cases to humans
-- includes responsible-AI documentation
-- is structured so a transformer can replace or compete with the baseline later
+Synthetic smoke metrics should not be presented as model performance.
 
-The most important next improvements are real labels, clearer priority definitions, confidence calibration, threshold tuning, and then transformer fine-tuning once there is enough data.
+## Future Work
+
+- calibrate confidence
+- add metadata-aware priority/risk models
+- benchmark DistilBERT/MiniLM after the baseline is stable
+- add multilingual support later
+- integrate with FastAPI ticket workflows
+- add policy retrieval/RAG
+- add human review tables and override feedback

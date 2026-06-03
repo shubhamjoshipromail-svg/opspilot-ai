@@ -6,6 +6,7 @@ import argparse
 import json
 from pathlib import Path
 import pickle
+from datetime import datetime, timezone
 
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -14,9 +15,14 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from sklearn.pipeline import Pipeline
 
 from data_utils import (
+    ARTIFACT_DIR,
     DEFAULT_TEST_PATH,
     DEFAULT_TRAIN_PATH,
     DEFAULT_VAL_PATH,
+    MODEL_VERSION,
+    NORMALIZED_DATA_PATH,
+    OUTPUT_DIR,
+    RANDOM_STATE,
     SYNTHETIC_DATA_PATH,
     canonicalize_ticket_frame,
     load_default_splits,
@@ -26,7 +32,20 @@ from data_utils import (
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = MODULE_DIR / "outputs"
+
+TFIDF_SETTINGS = {
+    "lowercase": True,
+    "ngram_range": (1, 2),
+    "min_df": 1,
+    "max_features": 5000,
+    "strip_accents": "unicode",
+}
+LOGISTIC_REGRESSION_SETTINGS = {
+    "max_iter": 1000,
+    "class_weight": "balanced",
+    "solver": "liblinear",
+    "random_state": RANDOM_STATE,
+}
 
 
 def _build_pipeline() -> Pipeline:
@@ -35,20 +54,13 @@ def _build_pipeline() -> Pipeline:
             (
                 "tfidf",
                 TfidfVectorizer(
-                    lowercase=True,
-                    ngram_range=(1, 2),
-                    min_df=1,
-                    max_features=5000,
-                    strip_accents="unicode",
+                    **TFIDF_SETTINGS,
                 ),
             ),
             (
                 "clf",
                 LogisticRegression(
-                    max_iter=1000,
-                    class_weight="balanced",
-                    solver="liblinear",
-                    random_state=42,
+                    **LOGISTIC_REGRESSION_SETTINGS,
                 ),
             ),
         ]
@@ -136,6 +148,8 @@ def _load_data(
     train_df, val_df, test_df = splits
     return train_df, val_df, test_df, {
         "dataset_type": "real_normalized_splits",
+        "dataset_source": "Tobi-Bueck/customer-support-tickets",
+        "normalized_dataset_path": str(NORMALIZED_DATA_PATH),
         "train_path": str(DEFAULT_TRAIN_PATH),
         "val_path": str(DEFAULT_VAL_PATH) if DEFAULT_VAL_PATH.exists() else None,
         "test_path": str(DEFAULT_TEST_PATH),
@@ -149,6 +163,7 @@ def train(
     smoke_test: bool = False,
 ) -> dict:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     train_df, val_df, test_df, data_metadata = _load_data(train_path, val_path, test_path, smoke_test)
 
     category_model = _build_pipeline()
@@ -172,10 +187,10 @@ def train(
         if "priority" in validation_metrics:
             validation_metrics["priority"].pop("predictions", None)
 
-    with (OUTPUT_DIR / "baseline_category.pkl").open("wb") as handle:
+    with (ARTIFACT_DIR / "category_model.pkl").open("wb") as handle:
         pickle.dump(category_model, handle)
     if priority_model is not None:
-        with (OUTPUT_DIR / "baseline_priority.pkl").open("wb") as handle:
+        with (ARTIFACT_DIR / "priority_model.pkl").open("wb") as handle:
             pickle.dump(priority_model, handle)
 
     category_predictions = category_metrics.pop("predictions")
@@ -189,7 +204,7 @@ def train(
     error_df.to_csv(OUTPUT_DIR / "error_analysis.csv", index=False)
 
     metrics = {
-        "model_version": "ticket-intelligence-v1",
+        "model_version": MODEL_VERSION,
         "baseline": "tfidf_logistic_regression",
         "data": data_metadata,
         "train_rows": int(len(train_df)),
@@ -201,6 +216,35 @@ def train(
     }
     (OUTPUT_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     _write_confusion_matrix_png(category_metrics, OUTPUT_DIR / "confusion_matrix.png")
+
+    metadata = {
+        "model_version": MODEL_VERSION,
+        "model_type": "tfidf_logistic_regression_baseline",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "random_seed": RANDOM_STATE,
+        "data": data_metadata,
+        "row_counts": {
+            "train": int(len(train_df)),
+            "validation": int(len(val_df)) if val_df is not None else 0,
+            "test": int(len(test_df)),
+        },
+        "labels": {
+            "category": sorted(train_df["category"].dropna().unique().tolist()),
+            "priority": sorted(train_df["priority"].dropna().unique().tolist()) if priority_model is not None else [],
+        },
+        "artifacts": {
+            "category_model": str(ARTIFACT_DIR / "category_model.pkl"),
+            "priority_model": str(ARTIFACT_DIR / "priority_model.pkl") if priority_model is not None else None,
+        },
+        "tfidf_settings": {**TFIDF_SETTINGS, "ngram_range": list(TFIDF_SETTINGS["ngram_range"])},
+        "logistic_regression_settings": LOGISTIC_REGRESSION_SETTINGS,
+        "validation_metrics": validation_metrics,
+        "test_metrics": {
+            "category": {key: category_metrics[key] for key in ["accuracy", "macro_f1", "weighted_f1"]},
+            "priority": {key: priority_metrics[key] for key in ["accuracy", "macro_f1", "weighted_f1"]} if priority_metrics else None,
+        },
+    }
+    (ARTIFACT_DIR / "model_metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     return metrics
 
 
@@ -212,7 +256,16 @@ def main() -> None:
     parser.add_argument("--smoke-test", action="store_true", help="Use synthetic_tickets.csv only for smoke testing.")
     args = parser.parse_args()
     metrics = train(args.train, args.val, args.test, args.smoke_test)
-    print(json.dumps({"metrics_path": str(OUTPUT_DIR / "metrics.json"), "metrics": metrics}, indent=2))
+    print(
+        json.dumps(
+            {
+                "metrics_path": str(OUTPUT_DIR / "metrics.json"),
+                "metadata_path": str(ARTIFACT_DIR / "model_metadata.json"),
+                "metrics": metrics,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

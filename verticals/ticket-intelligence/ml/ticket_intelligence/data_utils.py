@@ -15,10 +15,15 @@ MODULE_DIR = Path(__file__).resolve().parent
 VERTICAL_ROOT = MODULE_DIR.parents[1]
 PROJECT_ROOT = VERTICAL_ROOT.parents[1]
 SYNTHETIC_DATA_PATH = MODULE_DIR / "data" / "synthetic_tickets.csv"
+NORMALIZED_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "tickets_en_normalized.csv"
 PROCESSED_DATA_DIR = VERTICAL_ROOT / "data" / "processed"
+ARTIFACT_DIR = MODULE_DIR / "artifacts"
+OUTPUT_DIR = MODULE_DIR / "outputs"
 DEFAULT_TRAIN_PATH = PROCESSED_DATA_DIR / "train.csv"
 DEFAULT_VAL_PATH = PROCESSED_DATA_DIR / "val.csv"
 DEFAULT_TEST_PATH = PROCESSED_DATA_DIR / "test.csv"
+MODEL_VERSION = "ticket-intelligence-v1"
+RANDOM_STATE = 42
 
 KEY_FIELDS = [
     "customer_message",
@@ -30,8 +35,8 @@ KEY_FIELDS = [
     "tags",
 ]
 
-TEXT_COLUMNS = ["customer_message", "message", "ticket_text", "text", "body", "description"]
-CATEGORY_COLUMNS = ["true_category", "category", "label", "intent"]
+TEXT_COLUMNS = ["customer_message", "message", "ticket_text", "text", "body", "description", "subject"]
+CATEGORY_COLUMNS = ["true_category", "category", "queue", "group", "department", "label", "intent"]
 PRIORITY_COLUMNS = ["true_priority", "priority", "urgency", "severity"]
 
 SMOKE_DATA_FILENAMES = {"synthetic_tickets.csv"}
@@ -127,16 +132,23 @@ def canonicalize_ticket_frame(df: pd.DataFrame) -> pd.DataFrame:
         output["customer_message"] = output[mapping.text]
     if mapping.category != "category":
         output["category"] = output[mapping.category]
+    if "true_category" not in output.columns:
+        output["true_category"] = output["category"]
     if mapping.priority and mapping.priority != "priority":
         output["priority"] = output[mapping.priority]
+    if "true_priority" not in output.columns:
+        output["true_priority"] = output["priority"] if "priority" in output.columns else None
     elif "priority" not in output.columns:
         output["priority"] = None
 
     output["customer_message"] = output["customer_message"].astype(str).str.strip()
     output["category"] = output["category"].map(normalize_label)
     output["priority"] = output["priority"].map(normalize_label)
+    output["true_category"] = output["true_category"].map(normalize_label)
+    output["true_priority"] = output["true_priority"].map(normalize_label)
     output = output.dropna(subset=["customer_message", "category"])
     output["priority"] = output["priority"].fillna("unknown")
+    output["true_priority"] = output["true_priority"].fillna(output["priority"])
     if "ticket_id" not in output.columns:
         if "external_id" in output.columns:
             output["ticket_id"] = output["external_id"]

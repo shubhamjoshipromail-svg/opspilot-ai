@@ -287,13 +287,13 @@ streamlit run frontend/streamlit_app.py
 Run the Ticket Intelligence vertical:
 
 ```bash
+python scripts/build_ticket_dataset.py
 cd verticals/ticket-intelligence
 python ml/ticket_intelligence/data_audit.py
-python ml/ticket_intelligence/create_splits.py
+python ml/ticket_intelligence/create_splits.py --input ../../data/processed/tickets_en_normalized.csv
 python ml/ticket_intelligence/train_baseline.py
 python ml/ticket_intelligence/evaluate.py
 python ml/ticket_intelligence/predict.py "I was charged twice and need a refund today."
-uvicorn app.api.main:app --reload
 ```
 
 ## 20. Railway Postgres Notes

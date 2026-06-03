@@ -12,6 +12,7 @@ from data_utils import (
     DEFAULT_TEST_PATH,
     DEFAULT_TRAIN_PATH,
     DEFAULT_VAL_PATH,
+    NORMALIZED_DATA_PATH,
     PROJECT_ROOT,
     PROCESSED_DATA_DIR,
     SYNTHETIC_DATA_PATH,
@@ -27,6 +28,8 @@ from data_utils import (
 def resolve_input_path(input_path: Path | None, project_root: Path, allow_synthetic_smoke: bool) -> Path:
     if input_path:
         return input_path
+    if NORMALIZED_DATA_PATH.exists():
+        return NORMALIZED_DATA_PATH
     audit_rows = [audit_dataset(path, project_root) for path in iter_dataset_files(project_root)]
     selected = select_largest_real_training_dataset(audit_rows, project_root)
     if selected:
@@ -83,6 +86,12 @@ def main() -> None:
         "train_rows": int(len(train_df)),
         "val_rows": int(len(val_df)),
         "test_rows": int(len(test_df)),
+        "train_category_distribution": train_df["category"].value_counts().to_dict(),
+        "val_category_distribution": val_df["category"].value_counts().to_dict(),
+        "test_category_distribution": test_df["category"].value_counts().to_dict(),
+        "train_priority_distribution": train_df["priority"].value_counts().to_dict(),
+        "val_priority_distribution": val_df["priority"].value_counts().to_dict(),
+        "test_priority_distribution": test_df["priority"].value_counts().to_dict(),
         "synthetic_smoke_split": synthetic_smoke_split,
         "output_dir": str(output_dir),
     }

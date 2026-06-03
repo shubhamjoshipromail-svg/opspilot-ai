@@ -1,4 +1,6 @@
 file_path,row_count,columns,has_required_training_columns,is_smoke_or_generated_output,duplicate_customer_message_count,read_error
+data/processed/tickets_en_normalized.csv,23748,"external_id, customer_message, true_category, true_priority, status, channel, source, ticket_type, language, reference_answer, tags",True,False,0.0,
+data/raw/customer_support_tickets_en.csv,28261,"subject, body, answer, type, queue, priority, language, version, tag_1, tag_2, tag_3, tag_4, tag_5, tag_6, tag_7, tag_8",True,False,4595.0,
 verticals/ticket-intelligence/examples/sample_prediction.json,1,customer_message,False,False,0.0,
 verticals/ticket-intelligence/ml/ticket_intelligence/data/synthetic_tickets.csv,60,"ticket_id, customer_message, category, priority",True,True,0.0,
 verticals/ticket-intelligence/ml/ticket_intelligence/outputs/error_analysis.csv,10,"ticket_id, customer_message, category, priority, predicted_category, predicted_priority, category_correct, priority_correct",True,True,0.0,
