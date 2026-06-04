@@ -59,7 +59,7 @@ Current regenerated dataset:
 
 - Source rows: `61,765`
 - English rows before duplicate removal: `28,261`
-- Normalized rows after duplicate removal: `23,748`
+- Normalized rows after duplicate removal: `23,747`
 
 ## Splits
 
@@ -77,7 +77,7 @@ This writes fixed splits:
 
 Current split:
 
-- Train: `16,623`
+- Train: `16,622`
 - Validation: `3,562`
 - Test: `3,563`
 
@@ -138,8 +138,8 @@ Current test metrics:
 
 | Target | Accuracy | Macro-F1 | Weighted-F1 |
 | --- | ---: | ---: | ---: |
-| Category | 0.4415 | 0.4133 | 0.4441 |
-| Priority | 0.5240 | 0.5048 | 0.5236 |
+| Category | 0.4409 | 0.4121 | 0.4430 |
+| Priority | 0.5240 | 0.5042 | 0.5235 |
 
 These are honest baseline metrics. Category labels overlap in support data, and text-only priority prediction is limited because real priority often depends on metadata.
 
@@ -204,6 +204,74 @@ python ml/ticket_intelligence/predict.py
 
 The output is model-versioned JSON with nested category, priority, risk, routing, and metadata fields.
 
+## V2 Transformer Benchmark
+
+V2 adds a transformer fine-tuning path without replacing the v1 baselines. The first target is `parent_queue` routing:
+
+```text
+input = subject + "\n\n" + body
+target = category / true_category
+```
+
+The input excludes `answer` and `reference_answer` because those fields are post-resolution information and would leak future knowledge into routing, priority, or risk models.
+
+Primary model:
+
+```text
+answerdotai/ModernBERT-base
+```
+
+Fallbacks:
+
+- `microsoft/deberta-v3-base`
+- `microsoft/deberta-v3-small`
+- `distilbert-base-uncased`
+
+Run a smoke test from `verticals/ticket-intelligence`:
+
+```bash
+python ml/ticket_intelligence/train_modernbert.py \
+  --task parent_queue \
+  --model-name answerdotai/ModernBERT-base \
+  --epochs 1 \
+  --batch-size 4 \
+  --max-length 256 \
+  --sample-size 500
+```
+
+Run full parent_queue training on Colab/GPU:
+
+```bash
+python ml/ticket_intelligence/train_modernbert.py \
+  --task parent_queue \
+  --model-name answerdotai/ModernBERT-base \
+  --epochs 3 \
+  --batch-size 8 \
+  --max-length 512 \
+  --learning-rate 2e-5
+```
+
+Outputs:
+
+- `artifacts/modernbert_parent_queue/`
+- `outputs/modernbert_parent_queue_metrics.json`
+- `outputs/modernbert_parent_queue_classification_report.csv`
+- `outputs/modernbert_parent_queue_confusion_matrix.png`
+- `outputs/modernbert_parent_queue_predictions.csv`
+- `outputs/modernbert_parent_queue_error_analysis.csv`
+- `outputs/modernbert_parent_queue_run_summary.md`
+
+Build the model leaderboard:
+
+```bash
+python ml/ticket_intelligence/compare_models.py
+```
+
+This writes:
+
+- `outputs/model_leaderboard.csv`
+- `outputs/model_leaderboard.json`
+
 ## Synthetic Data
 
 `ml/ticket_intelligence/data/synthetic_tickets.csv` is reserved for smoke tests and README demos only:
@@ -216,6 +284,7 @@ Synthetic smoke metrics should not be presented as model performance.
 
 ## Future Work
 
+- run the ModernBERT v2 parent_queue benchmark on Colab/GPU
 - calibrate confidence
 - add metadata-aware priority/risk models
 - benchmark DistilBERT/MiniLM after the baseline is stable

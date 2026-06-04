@@ -12,3 +12,5 @@ torch>=2.2
 transformers>=4.40
 datasets>=2.18
 evaluate>=0.4
+accelerate>=0.28
+sentencepiece>=0.2

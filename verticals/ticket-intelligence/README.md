@@ -178,6 +178,78 @@ tensorflow_training_results.zip
 
 Download this zip from Colab or copy it to Google Drive. It contains the `.keras` models, label mappings, metrics, reports, confusion matrices, error analyses, risk-label audit files, model comparison, and ML report.
 
+## Running ModernBERT V2 Training in Colab
+
+V2 adds a transformer benchmark for serious ticket-routing evaluation. It is additive: the TF-IDF and TensorFlow CNN v1 models remain benchmarks.
+
+First v2 target:
+
+- Task: `parent_queue`
+- Input: `subject + body`
+- Label: normalized `category` / `true_category`
+- Excluded from input: `answer` / `reference_answer`
+
+Primary model:
+
+- `answerdotai/ModernBERT-base`
+
+Fallbacks:
+
+- `microsoft/deberta-v3-base`
+- `microsoft/deberta-v3-small`
+- `distilbert-base-uncased`
+
+Full instructions:
+
+- `docs/COLAB_MODERNBERT_TRAINING.md`
+
+Install dependencies in Colab:
+
+```bash
+pip install -q torch transformers datasets evaluate accelerate sentencepiece scikit-learn pandas matplotlib
+```
+
+Smoke test:
+
+```bash
+cd verticals/ticket-intelligence
+python ml/ticket_intelligence/train_modernbert.py \
+  --task parent_queue \
+  --model-name answerdotai/ModernBERT-base \
+  --epochs 1 \
+  --batch-size 4 \
+  --max-length 256 \
+  --sample-size 500
+```
+
+Full training:
+
+```bash
+python ml/ticket_intelligence/train_modernbert.py \
+  --task parent_queue \
+  --model-name answerdotai/ModernBERT-base \
+  --epochs 3 \
+  --batch-size 8 \
+  --max-length 512 \
+  --learning-rate 2e-5
+```
+
+ModernBERT outputs:
+
+- `ml/ticket_intelligence/artifacts/modernbert_parent_queue/`
+- `ml/ticket_intelligence/outputs/modernbert_parent_queue_metrics.json`
+- `ml/ticket_intelligence/outputs/modernbert_parent_queue_classification_report.csv`
+- `ml/ticket_intelligence/outputs/modernbert_parent_queue_confusion_matrix.png`
+- `ml/ticket_intelligence/outputs/modernbert_parent_queue_predictions.csv`
+- `ml/ticket_intelligence/outputs/modernbert_parent_queue_error_analysis.csv`
+- `ml/ticket_intelligence/outputs/modernbert_parent_queue_run_summary.md`
+
+Leaderboard:
+
+```bash
+python ml/ticket_intelligence/compare_models.py
+```
+
 ## Responsible AI
 
 The router sends uncertain, high-risk, or policy-sensitive tickets to human/supervisor review. OpsPilot Ticket Intelligence should not make final refund, legal, compliance, account, or customer-facing decisions without human oversight.

@@ -620,3 +620,121 @@ The zip includes `.keras` model files, label mappings, metrics JSON, classificat
 - Add real escalation outcomes before treating risk prediction as a true escalation model.
 - Keep human review for low-confidence, policy-sensitive, and high-risk tickets.
 - Consider transformers only after this TensorFlow extension is measured and understood.
+
+## 21. V2 Transformer Benchmark: ModernBERT Parent Queue
+
+V2 adds a transformer fine-tuning benchmark as an additive upgrade. It does not replace v1. The purpose is to compare a serious pretrained transformer against the existing TF-IDF and TensorFlow CNN models using the same fixed train/validation/test splits.
+
+First v2 task:
+
+```text
+parent_queue classification
+```
+
+Input:
+
+```text
+subject + "\n\n" + body
+```
+
+Target:
+
+```text
+category / true_category
+```
+
+The script uses `category` when available because it is the normalized parent queue label. If the dataset schema changes, it can fall back to `true_category` or another configured task label.
+
+The input deliberately excludes:
+
+```text
+answer
+reference_answer
+```
+
+Those fields are post-resolution answers, so using them to predict routing, priority, or risk would leak future information.
+
+Primary model:
+
+```text
+answerdotai/ModernBERT-base
+```
+
+Fallbacks:
+
+```text
+microsoft/deberta-v3-base
+microsoft/deberta-v3-small
+distilbert-base-uncased
+```
+
+Script:
+
+```text
+ml/ticket_intelligence/train_modernbert.py
+```
+
+The script supports:
+
+- `--task parent_queue / priority / ticket_type / raw_queue`
+- `--model-name`
+- `--epochs`
+- `--batch-size`
+- `--learning-rate`
+- `--max-length`
+- `--weight-decay`
+- `--warmup-ratio`
+- `--sample-size`
+- `--output-dir`
+- `--seed`
+
+It prints a split audit before training:
+
+- row counts
+- columns
+- target label counts
+- missing values
+- sample input text
+- whitespace token-length estimates
+- selected input and target columns
+
+It is robust to transformer models that do or do not accept `token_type_ids`.
+
+Expected outputs after Colab/GPU training:
+
+```text
+ml/ticket_intelligence/artifacts/modernbert_parent_queue/
+ml/ticket_intelligence/outputs/modernbert_parent_queue_metrics.json
+ml/ticket_intelligence/outputs/modernbert_parent_queue_classification_report.csv
+ml/ticket_intelligence/outputs/modernbert_parent_queue_confusion_matrix.png
+ml/ticket_intelligence/outputs/modernbert_parent_queue_predictions.csv
+ml/ticket_intelligence/outputs/modernbert_parent_queue_error_analysis.csv
+ml/ticket_intelligence/outputs/modernbert_parent_queue_run_summary.md
+```
+
+Local status: the local Anaconda environment used in this workspace does not currently have the full transformer stack installed, so the sample command fails clearly with install instructions. The intended training environment is Colab GPU.
+
+## 22. Model Leaderboard
+
+Leaderboard script:
+
+```text
+ml/ticket_intelligence/compare_models.py
+```
+
+Outputs:
+
+```text
+ml/ticket_intelligence/outputs/model_leaderboard.csv
+ml/ticket_intelligence/outputs/model_leaderboard.json
+```
+
+The leaderboard reads metrics when available from:
+
+- TF-IDF Logistic Regression category/priority baselines
+- TensorFlow CNN category/priority models
+- ModernBERT parent_queue model
+
+Current committed leaderboard contains the available TF-IDF rows. TensorFlow and ModernBERT rows appear automatically after their metric JSON files are generated in Colab and copied back into the repo.
+
+This should be described as a transformer-based ticket-routing benchmark and enterprise AI workflow prototype, not as production-ready automation.

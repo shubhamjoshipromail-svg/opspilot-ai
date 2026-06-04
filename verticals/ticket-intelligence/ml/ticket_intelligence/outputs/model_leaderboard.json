@@ -1,0 +1,22 @@
+[
+  {
+    "task": "parent_queue",
+    "model_name": "tfidf_logistic_regression",
+    "accuracy": 0.4409,
+    "macro_f1": 0.4121,
+    "weighted_f1": 0.443,
+    "notes": "V1 interpretable baseline using customer_message.",
+    "artifact_path": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/ml/ticket_intelligence/artifacts/category_model.pkl",
+    "metrics_path": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/ml/ticket_intelligence/outputs/metrics.json"
+  },
+  {
+    "task": "priority",
+    "model_name": "tfidf_logistic_regression",
+    "accuracy": 0.524,
+    "macro_f1": 0.5042,
+    "weighted_f1": 0.5235,
+    "notes": "V1 interpretable priority baseline using customer_message.",
+    "artifact_path": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/ml/ticket_intelligence/artifacts/priority_model.pkl",
+    "metrics_path": "/Users/shubhamjoshi/Documents/Ops-copilot/verticals/ticket-intelligence/ml/ticket_intelligence/outputs/metrics.json"
+  }
+]
