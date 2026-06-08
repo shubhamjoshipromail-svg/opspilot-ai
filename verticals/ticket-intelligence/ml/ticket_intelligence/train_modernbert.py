@@ -28,10 +28,27 @@ from data_utils import ARTIFACT_DIR, DEFAULT_TEST_PATH, DEFAULT_TRAIN_PATH, DEFA
 
 DEFAULT_MODEL_NAME = "answerdotai/ModernBERT-base"
 FALLBACK_MODELS = [
+    "answerdotai/ModernBERT-large",
     "microsoft/deberta-v3-base",
+    "microsoft/deberta-v3-large",
     "microsoft/deberta-v3-small",
+    "roberta-base",
+    "roberta-large",
     "distilbert-base-uncased",
 ]
+
+CLEAN_V1_LABEL_MAP = {
+    "technical_support": "technical_product_support",
+    "it_support": "technical_product_support",
+    "product_support": "technical_product_support",
+    "customer_service": "customer_general",
+    "general_inquiry": "customer_general",
+    "billing_and_payments": "billing_and_payments",
+    "returns_and_exchanges": "returns_and_exchanges",
+    "sales_and_pre_sales": "sales_and_pre_sales",
+    "human_resources": "human_resources",
+    "service_outages_and_maintenance": "service_outages_and_maintenance",
+}
 
 TASKS = {
     "parent_queue": {
@@ -116,7 +133,21 @@ def select_label_series(df: pd.DataFrame, task: str) -> tuple[pd.Series, str]:
     raise ValueError(f"Could not find label column for task {task!r}. Tried {TASKS[task]['label_candidates']}.")
 
 
-def load_split(path: Path, task: str) -> tuple[pd.DataFrame, str, str]:
+def apply_label_map(labels: pd.Series, label_map: str | None) -> pd.Series:
+    if not label_map:
+        return labels
+    if label_map != "clean_v1":
+        raise ValueError(f"Unsupported label map: {label_map}")
+    return labels.map(lambda label: CLEAN_V1_LABEL_MAP.get(label, label))
+
+
+def label_map_payload(label_map: str | None) -> dict[str, str] | None:
+    if label_map == "clean_v1":
+        return CLEAN_V1_LABEL_MAP
+    return None
+
+
+def load_split(path: Path, task: str, label_map: str | None = None) -> tuple[pd.DataFrame, str, str]:
     if not path.exists():
         raise FileNotFoundError(f"Missing split file: {path}. Run create_splits.py first.")
     df = pd.read_csv(path)
@@ -124,7 +155,8 @@ def load_split(path: Path, task: str) -> tuple[pd.DataFrame, str, str]:
     labels, label_source = select_label_series(df, task)
     output = df.copy()
     output["input_text"] = text.map(clean_text)
-    output["label_text"] = labels
+    output["original_label_text"] = labels
+    output["label_text"] = apply_label_map(labels, label_map)
     output = output[(output["input_text"].str.len() > 0) & (output["label_text"].str.len() > 0)].copy()
     return output, input_source, label_source
 
@@ -153,6 +185,26 @@ def build_label_maps(labels: pd.Series) -> tuple[dict[str, int], dict[int, str]]
     label2id = {label: idx for idx, label in enumerate(unique_labels)}
     id2label = {idx: label for label, idx in label2id.items()}
     return label2id, id2label
+
+
+def compute_class_weights(labels: pd.Series, label2id: dict[str, int], mode: str) -> tuple[list[float] | None, dict[str, float]]:
+    if mode == "none":
+        return None, {}
+    counts = labels.value_counts().to_dict()
+    total = float(len(labels))
+    num_classes = float(len(label2id))
+    weights_by_label: dict[str, float] = {}
+    for label, idx in sorted(label2id.items(), key=lambda item: item[1]):
+        count = float(counts.get(label, 0))
+        if count <= 0:
+            weight = 1.0
+        else:
+            weight = total / (num_classes * count)
+        if mode == "sqrt_balanced":
+            weight = math.sqrt(weight)
+        weights_by_label[label] = round(float(weight), 6)
+    weights = [weights_by_label[label] for label, _ in sorted(label2id.items(), key=lambda item: item[1])]
+    return weights, weights_by_label
 
 
 def encode_labels(df: pd.DataFrame, label2id: dict[str, int], split_name: str) -> pd.DataFrame:
@@ -272,9 +324,9 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
         AutoTokenizer,
         DataCollatorWithPadding,
         EarlyStoppingCallback,
-        Trainer,
         TrainingArguments,
     )
+    from transformers import Trainer
     import transformers
 
     random.seed(args.seed)
@@ -291,9 +343,9 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
     else:
         print("No CUDA GPU detected. Use Colab GPU for full ModernBERT training.")
 
-    train_df, input_source, label_source = load_split(DEFAULT_TRAIN_PATH, args.task)
-    val_df, val_input_source, val_label_source = load_split(DEFAULT_VAL_PATH, args.task)
-    test_df, test_input_source, test_label_source = load_split(DEFAULT_TEST_PATH, args.task)
+    train_df, input_source, label_source = load_split(DEFAULT_TRAIN_PATH, args.task, args.label_map)
+    val_df, val_input_source, val_label_source = load_split(DEFAULT_VAL_PATH, args.task, args.label_map)
+    test_df, test_input_source, test_label_source = load_split(DEFAULT_TEST_PATH, args.task, args.label_map)
     if len({input_source, val_input_source, test_input_source}) > 1:
         print(f"Warning: split input sources differ: {input_source}, {val_input_source}, {test_input_source}")
     if len({label_source, val_label_source, test_label_source}) > 1:
@@ -308,11 +360,12 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
     print_split_audit(train_df, val_df, test_df, input_source, label_source, args.task)
 
     label2id, id2label = build_label_maps(train_df["label_text"])
+    class_weights, class_weights_by_label = compute_class_weights(train_df["label_text"], label2id, args.class_weighting)
     train_df = encode_labels(train_df, label2id, "train")
     val_df = encode_labels(val_df, label2id, "validation")
     test_df = encode_labels(test_df, label2id, "test")
 
-    run_prefix = f"modernbert_{args.task}"
+    run_prefix = args.run_name if args.run_name else f"modernbert_{args.task}"
     artifact_dir = Path(args.output_dir) if args.output_dir else ARTIFACT_DIR / run_prefix
     artifact_dir.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -347,7 +400,25 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
             "weighted_f1": float(f1_score(y_true, y_pred, average="weighted")),
         }
 
-    trainer = Trainer(
+    class WeightedLossTrainer(Trainer):
+        def __init__(self, *trainer_args, class_weights_tensor=None, **trainer_kwargs):
+            super().__init__(*trainer_args, **trainer_kwargs)
+            self.class_weights_tensor = class_weights_tensor
+
+        def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+            labels_tensor = inputs.pop("labels", None)
+            if labels_tensor is None:
+                labels_tensor = inputs.pop("label")
+            outputs = model(**inputs)
+            logits = outputs.get("logits") if isinstance(outputs, dict) else outputs.logits
+            weight = self.class_weights_tensor.to(logits.device) if self.class_weights_tensor is not None else None
+            loss_fct = torch.nn.CrossEntropyLoss(weight=weight)
+            loss = loss_fct(logits.view(-1, model.config.num_labels), labels_tensor.view(-1))
+            return (loss, outputs) if return_outputs else loss
+
+    class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32) if class_weights is not None else None
+
+    trainer = WeightedLossTrainer(
         model=model,
         args=TrainingArguments(**training_args_kwargs(transformers, args, artifact_dir / "trainer")),
         train_dataset=train_dataset,
@@ -356,6 +427,7 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
         data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
         compute_metrics=compute_metrics,
         callbacks=[EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience)],
+        class_weights_tensor=class_weights_tensor,
     )
 
     trainer.train()
@@ -385,6 +457,8 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
         "device": device,
         "input_source": input_source,
         "label_source": label_source,
+        "label_map": args.label_map,
+        "label_map_values": label_map_payload(args.label_map),
         "answer_leakage_prevention": "answer/reference_answer excluded from input_text",
         "row_counts": {
             "train": int(len(train_df)),
@@ -395,6 +469,8 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
         "labels": labels,
         "label2id": label2id,
         "id2label": {str(idx): label for idx, label in id2label.items()},
+        "class_weighting": args.class_weighting,
+        "class_weights": class_weights_by_label,
         "accepts_token_type_ids": accepts_token_type_ids,
         "accuracy": round(float(accuracy_score(y_true, y_pred)), 4),
         "macro_f1": round(float(f1_score(y_true, y_pred, average="macro")), 4),
@@ -418,6 +494,7 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
     write_confusion_matrix_png(labels, matrix, confusion_path, f"{args.model_name} {args.task} Confusion Matrix")
 
     prediction_rows = test_df.copy()
+    prediction_rows["original_true_label"] = test_df["original_label_text"].tolist()
     prediction_rows["true_label"] = true_labels
     prediction_rows["predicted_label"] = predicted_labels
     prediction_rows["confidence"] = [round(float(value), 4) for value in confidence]
@@ -425,6 +502,10 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
         top_indices = probabilities.argsort(axis=1)[:, ::-1][:, rank]
         prediction_rows[f"top_{rank + 1}_label"] = [id2label[int(idx)] for idx in top_indices]
         prediction_rows[f"top_{rank + 1}_probability"] = [round(float(probabilities[row_idx, label_idx]), 4) for row_idx, label_idx in enumerate(top_indices)]
+    if "top_1_probability" in prediction_rows.columns and "top_2_probability" in prediction_rows.columns:
+        prediction_rows["top1_top2_margin"] = (
+            prediction_rows["top_1_probability"].astype(float) - prediction_rows["top_2_probability"].astype(float)
+        ).round(4)
 
     prediction_columns = [
         column
@@ -432,9 +513,11 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
             "ticket_id",
             "external_id",
             "input_text",
+            "original_true_label",
             "true_label",
             "predicted_label",
             "confidence",
+            "top1_top2_margin",
             "top_1_label",
             "top_1_probability",
             "top_2_label",
@@ -460,8 +543,11 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
                 f"# ModernBERT v2 Run Summary: {args.task}",
                 "",
                 f"- Model: `{args.model_name}`",
+                f"- Run name: `{run_prefix}`",
                 f"- Input: `{input_source}`",
                 f"- Label: `{label_source}`",
+                f"- Label map: `{args.label_map or 'none'}`",
+                f"- Class weighting: `{args.class_weighting}`",
                 "- Leakage prevention: `answer` / `reference_answer` excluded from input.",
                 f"- Train/val/test rows: `{len(train_df)}` / `{len(val_df)}` / `{len(test_df)}`",
                 f"- Accuracy: `{metrics['accuracy']}`",
@@ -484,6 +570,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fine-tune a transformer classifier for OpsPilot Ticket Intelligence v2.")
     parser.add_argument("--task", choices=sorted(TASKS), default="parent_queue")
     parser.add_argument("--model-name", default=DEFAULT_MODEL_NAME)
+    parser.add_argument("--run-name", default=None, help="Optional unique run name for output files and artifact directory.")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=2e-5)
@@ -493,6 +580,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sample-size", type=int, default=None)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--seed", type=int, default=RANDOM_STATE)
+    parser.add_argument("--class-weighting", choices=["none", "balanced", "sqrt_balanced"], default="none")
+    parser.add_argument("--label-map", choices=["clean_v1"], default=None)
     parser.add_argument("--early-stopping-patience", type=int, default=2)
     parser.add_argument("--fp16", action="store_true", help="Enable fp16 training when CUDA supports it.")
     parser.add_argument("--trust-remote-code", action="store_true")

@@ -738,3 +738,62 @@ The leaderboard reads metrics when available from:
 Current committed leaderboard contains the available TF-IDF rows. TensorFlow and ModernBERT rows appear automatically after their metric JSON files are generated in Colab and copied back into the repo.
 
 This should be described as a transformer-based ticket-routing benchmark and enterprise AI workflow prototype, not as production-ready automation.
+
+## 23. V2 Experiment Upgrade Plan
+
+The first full ModernBERT-base `parent_queue` result is stronger than v1 but still not strong enough for a final routing model:
+
+| Model | Accuracy | Macro-F1 | Weighted-F1 |
+|---|---:|---:|---:|
+| ModernBERT-base parent_queue | 0.5229 | 0.4725 | 0.5158 |
+
+The next v2 experiments are designed to improve routing quality without deleting or overwriting existing results.
+
+New trainer flags:
+
+```bash
+--run-name
+--class-weighting none|balanced|sqrt_balanced
+--label-map clean_v1
+```
+
+`--run-name` saves artifacts and outputs under unique names:
+
+```text
+artifacts/{run_name}/
+outputs/{run_name}_metrics.json
+outputs/{run_name}_classification_report.csv
+outputs/{run_name}_predictions.csv
+outputs/{run_name}_error_analysis.csv
+outputs/{run_name}_confusion_matrix.png
+```
+
+`--class-weighting` adds weighted cross entropy:
+
+- `none`: unweighted baseline
+- `balanced`: inverse-frequency class weights
+- `sqrt_balanced`: softened inverse-frequency weights
+
+`--label-map clean_v1` merges overlapping support labels:
+
+- `technical_support`, `it_support`, `product_support` -> `technical_product_support`
+- `customer_service`, `general_inquiry` -> `customer_general`
+
+This tests whether cleaner operational routing groups outperform the original noisy queue taxonomy.
+
+Recommended bakeoff:
+
+1. ModernBERT-base baseline
+2. ModernBERT-base + `sqrt_balanced`
+3. ModernBERT-large + `sqrt_balanced`
+4. DeBERTa-v3-large + `sqrt_balanced`
+5. ModernBERT-base + `clean_v1` + `sqrt_balanced`
+
+Threshold analysis is now available:
+
+```bash
+python ml/ticket_intelligence/threshold_analysis.py \
+  --predictions ml/ticket_intelligence/outputs/{run_name}_predictions.csv
+```
+
+It reports coverage, accuracy, and macro-F1 at confidence thresholds from 0.00 to 0.95. This supports the human-in-the-loop routing design by showing how many tickets can be auto-routed at each confidence level and how many should be sent to review.

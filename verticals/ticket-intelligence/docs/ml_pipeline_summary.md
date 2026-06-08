@@ -245,10 +245,25 @@ Run full parent_queue training on Colab/GPU:
 python ml/ticket_intelligence/train_modernbert.py \
   --task parent_queue \
   --model-name answerdotai/ModernBERT-base \
+  --run-name modernbert_base_parent_queue \
   --epochs 3 \
   --batch-size 8 \
   --max-length 512 \
   --learning-rate 2e-5
+```
+
+Experiment flags:
+
+- `--run-name`: saves artifacts and outputs under unique names.
+- `--class-weighting none|balanced|sqrt_balanced`: enables weighted cross entropy for imbalanced labels.
+- `--label-map clean_v1`: merges overlapping support labels into cleaner routing groups.
+- `--model-name`: can use ModernBERT, DeBERTa, RoBERTa, or DistilBERT sequence classifiers.
+
+Analyze human-review confidence thresholds:
+
+```bash
+python ml/ticket_intelligence/threshold_analysis.py \
+  --predictions ml/ticket_intelligence/outputs/modernbert_base_parent_queue_predictions.csv
 ```
 
 Outputs:

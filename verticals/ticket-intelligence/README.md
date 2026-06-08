@@ -228,10 +228,29 @@ Full training:
 python ml/ticket_intelligence/train_modernbert.py \
   --task parent_queue \
   --model-name answerdotai/ModernBERT-base \
+  --run-name modernbert_base_parent_queue \
   --epochs 3 \
   --batch-size 8 \
   --max-length 512 \
   --learning-rate 2e-5
+```
+
+Experiment upgrades:
+
+- `--run-name` writes artifacts and outputs under unique names.
+- `--class-weighting none|balanced|sqrt_balanced` supports weighted loss for imbalanced routing labels.
+- `--label-map clean_v1` merges overlapping queues into cleaner routing groups.
+- `--model-name` can point to ModernBERT, DeBERTa, RoBERTa, or DistilBERT sequence classifiers.
+
+Recommended bakeoff commands are in:
+
+- `docs/COLAB_MODERNBERT_TRAINING.md`
+
+Threshold analysis:
+
+```bash
+python ml/ticket_intelligence/threshold_analysis.py \
+  --predictions ml/ticket_intelligence/outputs/modernbert_base_parent_queue_predictions.csv
 ```
 
 ModernBERT outputs:

@@ -78,6 +78,7 @@ cd /content/opspilot-ai/verticals/ticket-intelligence
 python ml/ticket_intelligence/train_modernbert.py \
   --task parent_queue \
   --model-name answerdotai/ModernBERT-base \
+  --run-name smoke_modernbert_parent_queue \
   --epochs 1 \
   --batch-size 4 \
   --max-length 256 \
@@ -90,6 +91,7 @@ If ModernBERT fails due to package or compute limits, use the fallback:
 python ml/ticket_intelligence/train_modernbert.py \
   --task parent_queue \
   --model-name microsoft/deberta-v3-small \
+  --run-name smoke_deberta_small_parent_queue \
   --epochs 1 \
   --batch-size 4 \
   --max-length 256 \
@@ -104,28 +106,105 @@ cd /content/opspilot-ai/verticals/ticket-intelligence
 python ml/ticket_intelligence/train_modernbert.py \
   --task parent_queue \
   --model-name answerdotai/ModernBERT-base \
+  --run-name modernbert_base_parent_queue \
   --epochs 3 \
   --batch-size 8 \
   --max-length 512 \
   --learning-rate 2e-5
 ```
 
-Fallbacks if needed:
+## 7. Model Bakeoff Commands
+
+Use unique `--run-name` values so each run writes separate artifacts and outputs.
+
+### 1. ModernBERT-base baseline
 
 ```bash
 python ml/ticket_intelligence/train_modernbert.py \
   --task parent_queue \
-  --model-name microsoft/deberta-v3-base \
+  --model-name answerdotai/ModernBERT-base \
+  --run-name modernbert_base_parent_queue \
   --epochs 3 \
   --batch-size 8 \
   --max-length 512 \
   --learning-rate 2e-5
 ```
+
+### 2. ModernBERT-base + sqrt class weights
+
+```bash
+python ml/ticket_intelligence/train_modernbert.py \
+  --task parent_queue \
+  --model-name answerdotai/ModernBERT-base \
+  --run-name modernbert_base_parent_queue_sqrt_weights \
+  --class-weighting sqrt_balanced \
+  --epochs 3 \
+  --batch-size 8 \
+  --max-length 512 \
+  --learning-rate 2e-5
+```
+
+Use `--class-weighting balanced` if you want stronger inverse-frequency weighting.
+
+### 3. ModernBERT-large + class weights
+
+```bash
+python ml/ticket_intelligence/train_modernbert.py \
+  --task parent_queue \
+  --model-name answerdotai/ModernBERT-large \
+  --run-name modernbert_large_parent_queue_sqrt_weights \
+  --class-weighting sqrt_balanced \
+  --epochs 3 \
+  --batch-size 4 \
+  --max-length 512 \
+  --learning-rate 2e-5
+```
+
+Large models may need smaller batch sizes on free Colab GPUs.
+
+### 4. DeBERTa-v3-large + class weights
+
+```bash
+python ml/ticket_intelligence/train_modernbert.py \
+  --task parent_queue \
+  --model-name microsoft/deberta-v3-large \
+  --run-name deberta_v3_large_parent_queue_sqrt_weights \
+  --class-weighting sqrt_balanced \
+  --epochs 3 \
+  --batch-size 4 \
+  --max-length 512 \
+  --learning-rate 2e-5
+```
+
+Fallback smaller DeBERTa:
 
 ```bash
 python ml/ticket_intelligence/train_modernbert.py \
   --task parent_queue \
   --model-name microsoft/deberta-v3-small \
+  --run-name deberta_v3_small_parent_queue_sqrt_weights \
+  --class-weighting sqrt_balanced \
+  --epochs 3 \
+  --batch-size 8 \
+  --max-length 512 \
+  --learning-rate 2e-5
+```
+
+### 5. clean_v1 taxonomy run
+
+This merges overlapping labels into cleaner routing groups:
+
+- `technical_support`, `it_support`, `product_support` -> `technical_product_support`
+- `customer_service`, `general_inquiry` -> `customer_general`
+- other labels remain separate
+
+```bash
+python ml/ticket_intelligence/train_modernbert.py \
+  --task parent_queue \
+  --model-name answerdotai/ModernBERT-base \
+  --run-name modernbert_base_parent_queue_clean_v1_sqrt_weights \
+  --label-map clean_v1 \
+  --class-weighting sqrt_balanced \
   --epochs 3 \
   --batch-size 8 \
   --max-length 512 \
@@ -134,7 +213,38 @@ python ml/ticket_intelligence/train_modernbert.py \
 
 Use `distilbert-base-uncased` only if the above fail.
 
-## 7. Build Leaderboard
+## 8. Threshold Analysis
+
+After a run creates predictions, analyze confidence thresholds for auto-routing vs human review:
+
+```bash
+python ml/ticket_intelligence/threshold_analysis.py \
+  --predictions ml/ticket_intelligence/outputs/modernbert_base_parent_queue_predictions.csv
+```
+
+For a named run:
+
+```bash
+python ml/ticket_intelligence/threshold_analysis.py \
+  --predictions ml/ticket_intelligence/outputs/modernbert_base_parent_queue_sqrt_weights_predictions.csv
+```
+
+If prediction files include `top1_top2_margin`, you can require a minimum margin too:
+
+```bash
+python ml/ticket_intelligence/threshold_analysis.py \
+  --predictions ml/ticket_intelligence/outputs/modernbert_base_parent_queue_sqrt_weights_predictions.csv \
+  --margin-threshold 0.10
+```
+
+Outputs:
+
+```text
+ml/ticket_intelligence/outputs/{run_name}_coverage_by_threshold.csv
+ml/ticket_intelligence/outputs/{run_name}_coverage_by_threshold.png
+```
+
+## 9. Build Leaderboard
 
 After training:
 
@@ -149,26 +259,32 @@ ml/ticket_intelligence/outputs/model_leaderboard.csv
 ml/ticket_intelligence/outputs/model_leaderboard.json
 ```
 
-## 8. Expected Outputs
+## 10. Expected Outputs
 
 Model artifact:
 
 ```text
-ml/ticket_intelligence/artifacts/modernbert_parent_queue/
+ml/ticket_intelligence/artifacts/{run_name}/
 ```
 
 Reports:
 
 ```text
-ml/ticket_intelligence/outputs/modernbert_parent_queue_metrics.json
-ml/ticket_intelligence/outputs/modernbert_parent_queue_classification_report.csv
-ml/ticket_intelligence/outputs/modernbert_parent_queue_confusion_matrix.png
-ml/ticket_intelligence/outputs/modernbert_parent_queue_predictions.csv
-ml/ticket_intelligence/outputs/modernbert_parent_queue_error_analysis.csv
-ml/ticket_intelligence/outputs/modernbert_parent_queue_run_summary.md
+ml/ticket_intelligence/outputs/{run_name}_metrics.json
+ml/ticket_intelligence/outputs/{run_name}_classification_report.csv
+ml/ticket_intelligence/outputs/{run_name}_confusion_matrix.png
+ml/ticket_intelligence/outputs/{run_name}_predictions.csv
+ml/ticket_intelligence/outputs/{run_name}_error_analysis.csv
+ml/ticket_intelligence/outputs/{run_name}_run_summary.md
 ```
 
-## 9. Zip And Download
+If you do not pass `--run-name`, the legacy default remains:
+
+```text
+modernbert_parent_queue_*
+```
+
+## 11. Zip And Download
 
 ```bash
 zip -r modernbert_parent_queue_results.zip \

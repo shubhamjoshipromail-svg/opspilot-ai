@@ -111,6 +111,20 @@ The v2 script saves model artifacts, tokenizer, label mappings, metrics, classif
 
 This benchmark is an enterprise AI workflow prototype for ticket routing. It is not production-ready automation.
 
+Current first ModernBERT-base parent_queue result:
+
+- Accuracy: `0.5229`
+- Macro-F1: `0.4725`
+- Weighted-F1: `0.5158`
+
+The next v2 experiments add:
+
+- unique `--run-name` outputs to avoid overwriting prior runs
+- `--class-weighting none|balanced|sqrt_balanced`
+- `--label-map clean_v1` to merge overlapping queue labels
+- support for ModernBERT, DeBERTa, RoBERTa, and DistilBERT model names
+- confidence threshold analysis for human review routing
+
 ## Human Oversight Policy
 
 The system routes tickets to human or supervisor review when:
@@ -159,6 +173,8 @@ Track:
 - Calibrate model confidence.
 - Add operational metadata for priority and escalation risk.
 - Run and compare the ModernBERT parent_queue benchmark on Colab/GPU.
+- Compare ModernBERT-base, ModernBERT-large, DeBERTa-v3-large, and clean_v1 taxonomy runs.
+- Use confidence threshold analysis to decide human-review cutoffs.
 - Add specialized transformer models for priority, ticket_type, and raw_queue only after parent_queue is documented.
 - Consider a shared-encoder multitask model later.
 - Add multilingual support with either language detection plus language-specific models or multilingual transformer models such as XLM-R or multilingual DistilBERT.
