@@ -14,3 +14,16 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+verticals/ticket-intelligence/data/processed/*
+verticals/ticket-intelligence/ml/ticket_intelligence/artifacts/*
+verticals/ticket-intelligence/ml/ticket_intelligence/outputs/*
+*.keras
+*.pt
+*.bin
+*.safetensors
+*.ckpt
+*.h5
+__pycache__/
+.ipynb_checkpoints/
+.cache/
+huggingface/
