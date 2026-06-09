@@ -34,7 +34,7 @@ def route_threshold() -> float:
 def load_routing_model() -> tuple[Any, Any, Any, str]:
     try:
         import torch
-        from transformers import AutoModelForSequenceClassification, AutoTokenizer
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizerFast
     except ModuleNotFoundError as exc:  # pragma: no cover - environment dependent
         raise RuntimeError(
             "Ticket intelligence routing requires torch and transformers. "
@@ -42,8 +42,16 @@ def load_routing_model() -> tuple[Any, Any, Any, str]:
         ) from exc
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    except ValueError as exc:
+        if "Tokenizer class" not in str(exc):
+            raise RuntimeError(f"Could not load routing tokenizer from {MODEL_NAME}: {exc}") from exc
+        tokenizer = PreTrainedTokenizerFast.from_pretrained(MODEL_NAME)
+    try:
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+    except Exception as exc:  # pragma: no cover - depends on remote model state
+        raise RuntimeError(f"Could not load routing model from {MODEL_NAME}: {exc}") from exc
     model.to(device)
     model.eval()
     return tokenizer, model, torch, device
