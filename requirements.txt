@@ -8,5 +8,7 @@ streamlit
 pandas
 scikit-learn
 matplotlib
+torch
+transformers
 pytest
 requests

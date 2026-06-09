@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from backend.app.routes import tickets_router
+from backend.app.routes import ticket_intelligence_router, tickets_router
 
 
 app = FastAPI(
@@ -10,6 +10,7 @@ app = FastAPI(
 )
 
 app.include_router(tickets_router)
+app.include_router(ticket_intelligence_router)
 
 
 @app.get("/health")
