@@ -1,8 +1,8 @@
 # Backend
 
-This folder will contain the FastAPI backend for OpsPilot AI.
+This folder contains the canonical FastAPI backend for OpsPilot AI.
 
-Current status: **Phase 1 backend/database vertical slice**.
+Current status: **MVP product backbone**.
 
 Planned responsibilities:
 
@@ -14,13 +14,20 @@ Planned responsibilities:
 - Evaluation trace storage.
 - Analytics endpoints.
 
+Implemented:
+
+- Ticket CRUD.
+- Hugging Face Ticket Intelligence routing.
+- Database-backed routing prediction logging.
+- Dashboard summary and recent-prediction APIs.
+- Alembic database migrations.
+
 Not implemented yet:
 
-- ML models.
 - RAG or policy retrieval.
 - LLM calls.
 - AI evaluation.
-- Analytics dashboards.
+- Streamlit dashboard pages.
 - Full Streamlit UI.
 - Authentication or authorization.
 
@@ -55,8 +62,6 @@ It includes:
 
 The `tickets` table now includes these dataset-aligned fields in addition to the original Phase 1 CRUD fields.
 
-Important database note: Alembic migrations are intentionally not implemented yet. If the `tickets` table already exists without the new Phase 1.6 columns, drop/recreate it manually in development or reset the database before running `python -m backend.app.db.init_db`.
-
 ### Configure Environment
 
 From the repository root:
@@ -75,10 +80,12 @@ APP_ENV=development
 ### Initialize Tables
 
 ```bash
-python -m backend.app.db.init_db
+alembic upgrade head
 ```
 
-This creates the current SQLAlchemy tables. Alembic migrations are intentionally not included yet.
+This creates or upgrades the `tickets` and `ticket_routing_predictions` tables.
+`python -m backend.app.db.init_db` remains available as a local-development
+fallback, but Alembic is the canonical schema-management path.
 
 ### Load Normalized Tickets
 
@@ -110,6 +117,29 @@ Health check:
 
 ```bash
 curl http://127.0.0.1:8000/health
+```
+
+Route and log a ticket prediction:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/ticket-intelligence/route \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "Invoice payment issue",
+    "body": "I was charged twice for my subscription."
+  }'
+```
+
+Dashboard summary:
+
+```bash
+curl http://127.0.0.1:8000/api/dashboard/summary
+```
+
+Recent predictions:
+
+```bash
+curl "http://127.0.0.1:8000/api/dashboard/recent-predictions?limit=20"
 ```
 
 Create a ticket:
