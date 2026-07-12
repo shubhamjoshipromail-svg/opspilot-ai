@@ -78,12 +78,12 @@ Saved under `outputs/`:
 
 Fixed English-only test split:
 
-- Category accuracy: `0.4415`
-- Category macro-F1: `0.4133`
-- Category weighted-F1: `0.4441`
+- Category accuracy: `0.4409`
+- Category macro-F1: `0.4121`
+- Category weighted-F1: `0.4430`
 - Priority accuracy: `0.5240`
-- Priority macro-F1: `0.5048`
-- Priority weighted-F1: `0.5236`
+- Priority macro-F1: `0.5042`
+- Priority weighted-F1: `0.5235`
 
 Priority is a text-only baseline and should be interpreted carefully. In production, priority should include operational metadata.
 

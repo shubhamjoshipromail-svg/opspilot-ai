@@ -17,6 +17,7 @@ data/processed/*
 verticals/ticket-intelligence/data/processed/*
 verticals/ticket-intelligence/ml/ticket_intelligence/artifacts/*
 verticals/ticket-intelligence/ml/ticket_intelligence/outputs/*
+verticals/ticket-intelligence/*.zip
 *.keras
 *.pt
 *.bin
