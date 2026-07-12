@@ -1,351 +1,616 @@
-# OpsPilot AI
+# OpsPilot
 
-**Production-style AI Operations Copilot for ticket triage, escalation-risk scoring, policy-grounded recommendations, human-in-the-loop review, AI evaluation, and ROI analytics.**
+**A modular AI operations platform for controlled ticket routing, human review,
+workflow auditability, and operational analytics.**
 
-## 1. Executive Summary
+OpsPilot is designed to connect company databases, internal tools, specialized
+machine-learning models, retrieval systems, and future agentic workflows into a
+controlled decision-support system.
 
-OpsPilot AI is planned as a production-style AI workflow product for operations teams that manage high-volume, messy, policy-sensitive cases such as support tickets, claims, disputes, billing issues, fulfillment exceptions, and internal service requests.
+It is not intended to be a single chatbot or a standalone classifier. The
+product goal is an AI operations backbone where independent AI modules can be
+plugged into business workflows behind stable APIs, persistent records, human
+review rules, and measurable outcomes.
 
-This repository currently includes the **Phase 1 backend/database vertical slice**. It contains the original planning scaffold plus a minimal FastAPI and SQLAlchemy ticket CRUD workflow that can persist tickets to Railway Postgres through `DATABASE_URL` or fall back to local SQLite for development.
+## Current MVP
 
-The future product will combine structured case management, machine learning, retrieval over policies and SOPs, LLM-assisted recommendations, evaluation traces, human approval workflows, and business impact analytics.
+The current MVP focuses on service-ticket intelligence:
 
-## 2. Problem Statement
+- Ticket CRUD and database persistence.
+- Seven-queue ticket routing using a hosted ModernBERT model.
+- Confidence scoring and complete probability distributions.
+- `auto_route` versus `human_review` decisions.
+- Prediction persistence and model metadata.
+- Database-backed dashboard metrics.
+- An operator-facing Streamlit console.
 
-Operations teams often process large volumes of unstructured requests. These cases may arrive with incomplete context, inconsistent language, emotional customer tone, or unclear policy implications. Teams need to decide:
+### Implementation Status
 
-- What type of issue is this?
-- How urgent is it?
-- Is there escalation risk?
-- Which policy or SOP applies?
-- What is the best next action?
-- Can an AI-generated recommendation be trusted?
-- When should a human approve, reject, or override the AI?
+| Capability | Status |
+| --- | --- |
+| Canonical FastAPI backend | Implemented |
+| Ticket CRUD | Implemented |
+| Hugging Face routing service | Implemented |
+| Prediction persistence | Implemented |
+| Alembic migrations | Implemented |
+| Dashboard APIs | Implemented |
+| Canonical Streamlit MVP | Implemented |
+| API-client error handling | Implemented |
+| Curated demo-data seed | Planned |
+| Human review records and overrides | Planned |
+| Policy retrieval/RAG | Planned |
+| Recommendations and response drafting | Planned |
+| Authentication and permissions | Planned |
+| Agent/tool orchestration | Planned |
 
-Most simple chatbot demos do not solve this workflow. OpsPilot AI is designed as an operational decision-support system, not a generic chat interface.
+## Product Loop
 
-## 3. Why This Matters For Business
+```text
+Operator enters ticket subject and body
+                    |
+                    v
+         Streamlit calls FastAPI
+                    |
+                    v
+     Ticket Intelligence runs routing
+                    |
+                    v
+  Queue + confidence + review decision
+                    |
+                    v
+       Prediction stored in database
+                    |
+                    v
+ Dashboard and model analytics update
+```
 
-Better operations workflows can reduce manual review time, improve consistency, prevent costly escalations, and create measurable business value. A mature version of OpsPilot AI should help teams:
+The routing endpoint is intentionally only one AI module. Future modules should
+follow the same pattern: stable contract, service boundary, persistent output,
+version metadata, human-control rules, and measurable behavior.
 
-- Shorten ticket resolution time.
-- Prioritize risky cases earlier.
-- Improve policy compliance.
-- Reduce inconsistent responses across agents.
-- Capture human feedback for model improvement.
-- Track AI quality and operational ROI.
-- Create audit trails for sensitive decisions.
+## Canonical Architecture
 
-## 4. Target Users
+```text
+frontend/streamlit_app.py
+        |
+        | HTTP
+        v
+backend/app (FastAPI)
+        |
+        +-- Ticket CRUD
+        +-- Ticket Intelligence
+        +-- Prediction logging
+        +-- Dashboard services
+        |
+        v
+SQLAlchemy + Alembic
+        |
+        +-- PostgreSQL in hosted environments
+        +-- SQLite fallback for development
 
-- Customer support operations managers.
-- Claims operations teams.
-- Trust and safety reviewers.
-- Billing and dispute teams.
-- Internal IT or HR service desk teams.
-- AI operations reviewers.
-- Business operations analysts.
-- Product operations teams.
+verticals/ticket-intelligence/ml
+        |
+        +-- Research, training, and evaluation only
+```
 
-## 5. Target Industries
+Canonical boundaries:
 
-- SaaS and B2B software.
-- E-commerce and marketplaces.
-- Fintech and payments.
-- Insurance claims.
-- Healthcare operations.
-- Logistics and shipping.
-- Telecom and subscription businesses.
-- Internal enterprise service operations.
+- `backend/app` is the deployable product backend.
+- `frontend/streamlit_app.py` is the canonical MVP frontend.
+- `verticals/ticket-intelligence/ml` is the research and training lab.
+- `verticals/ticket-intelligence/app` is a legacy standalone prototype unless
+  explicitly revived.
+- `data/policies` contains mock policy material for future retrieval work.
+- Model binaries and large generated datasets are not committed to Git.
 
-## 6. Target Roles This Project Demonstrates Fit For
+See [Product Architecture](docs/PRODUCT_ARCHITECTURE.md) for the complete
+architecture, module boundaries, build order, and glossary.
 
-This project is intentionally designed to show skills relevant to:
+## Repository Map
 
-- Applied AI Engineer.
-- AI Solutions Engineer.
-- Forward-Deployed AI Engineer.
-- Operations Data Scientist.
-- Product Data Scientist.
-- AI Product Analyst.
-- Decision Scientist.
-- Strategy & Ops AI.
-- AI Workflow Automation Engineer.
+```text
+Ops-copilot/
+├── backend/
+│   ├── README.md
+│   └── app/
+│       ├── main.py
+│       ├── config.py
+│       ├── database.py
+│       ├── db/
+│       ├── models/
+│       ├── routes/
+│       ├── schemas/
+│       └── services/
+├── frontend/
+│   ├── api_client.py
+│   ├── streamlit_app.py
+│   └── README.md
+├── migrations/
+│   └── versions/
+├── verticals/
+│   └── ticket-intelligence/
+│       ├── ml/
+│       ├── notebooks/
+│       ├── docs/
+│       └── app/                  # legacy prototype
+├── data/
+│   ├── policies/
+│   ├── raw/
+│   └── processed/
+├── docs/
+├── scripts/
+├── tests/
+├── Dockerfile
+├── railway.json
+└── requirements.txt
+```
 
-## 7. Future Product Workflow
+## Backend API
 
-The planned workflow for each incoming case:
+The canonical application is `backend.app.main:app`.
 
-1. Store the ticket in Postgres.
-2. Classify the ticket category.
-3. Predict priority and escalation risk.
-4. Retrieve relevant policy or SOP evidence.
-5. Recommend the next best action.
-6. Draft a customer or internal response.
-7. Evaluate AI output for quality, groundedness, hallucination risk, policy compliance, and escalation correctness.
-8. Require human approval for risky actions.
-9. Save human feedback, override reasons, and final decisions.
-10. Produce analytics on business impact, model performance, workflow quality, and ROI.
+### Health
 
-## 8. Planned Architecture
+```text
+GET /health
+```
 
-The planned system will use modular service boundaries:
+### Tickets
 
-- **Backend API:** FastAPI service for case intake, review workflow, decisions, and analytics endpoints.
-- **Database:** Postgres for tickets, predictions, recommendations, feedback, and audit trails.
-- **Model services:** Swappable interfaces for classification, risk scoring, retrieval, recommendation, drafting, and evaluation.
-- **Policy retrieval layer:** Initially keyword-based, later embeddings/RAG.
-- **Human review layer:** Approval, rejection, override, and escalation workflows.
-- **Frontend:** Streamlit MVP for case inbox, review workspace, model traces, and analytics.
-- **Evaluation layer:** Offline and online evaluation of predictions, recommendations, policy grounding, and response quality.
+```text
+POST   /tickets
+GET    /tickets
+GET    /tickets/{ticket_id}
+PATCH  /tickets/{ticket_id}
+DELETE /tickets/{ticket_id}
+```
 
-## 9. Planned Tech Stack
+### Ticket Intelligence
 
-- Python.
-- FastAPI.
-- Postgres.
-- SQLAlchemy.
-- Pydantic.
-- Streamlit.
-- pandas.
-- scikit-learn.
-- pytest.
-- Future LLM providers and model APIs.
-- Future vector search or retrieval backend.
-- Future deployment with Railway or similar platform.
+```text
+POST /api/ticket-intelligence/route
+```
 
-## 10. Core Modules
+Request:
 
-Planned modules include:
+```json
+{
+  "subject": "Invoice payment issue",
+  "body": "I was charged twice for my subscription."
+}
+```
 
-- Ticket ingestion and normalization.
-- Triage classification.
-- Escalation-risk scoring.
-- Policy and SOP retrieval.
-- Next-best-action recommendation.
-- Response drafting.
-- AI output evaluation.
-- Human-in-the-loop review.
-- Feedback capture.
-- Operational analytics.
-- Model performance analytics.
-- ROI analytics.
+Response:
 
-## 11. Planned Database Design
+```json
+{
+  "predicted_queue": "billing_and_payments",
+  "confidence": 0.91,
+  "decision": "auto_route",
+  "threshold": 0.8,
+  "probabilities": {
+    "billing_and_payments": 0.91,
+    "customer_general": 0.01,
+    "human_resources": 0.01,
+    "returns_and_exchanges": 0.01,
+    "sales_and_pre_sales": 0.01,
+    "service_outages_and_maintenance": 0.01,
+    "technical_product_support": 0.04
+  },
+  "model_id": "shubhamjoshipro/opspilot-routing-modernbert-base-clean-v1",
+  "latency_ms": 42,
+  "timestamp": "2026-06-13T12:00:00Z"
+}
+```
 
-Future tables may include:
+The default routing threshold is `0.80`:
 
-- `tickets`: incoming cases and normalized fields. This is the only table implemented in Phase 1.
-- `ticket_events`: timeline of case changes.
-- `triage_predictions`: category, confidence, and model version.
-- `risk_scores`: escalation risk, priority, drivers, and model version.
-- `retrieval_results`: policies or SOPs used as evidence.
-- `recommendations`: suggested actions and rationale.
-- `draft_responses`: AI-generated response drafts.
-- `evaluation_traces`: quality, groundedness, hallucination risk, and compliance scores.
-- `human_reviews`: approvals, rejections, edits, overrides, and reviewer notes.
-- `model_versions`: version metadata for algorithms and prompts.
-- `business_metrics`: time saved, escalation reduction, throughput, and ROI calculations.
+- Confidence at or above the threshold: `auto_route`
+- Confidence below the threshold: `human_review`
 
-Only the `tickets` table is implemented so far. Phase 1.6 aligns it with the normalized English dataset at `data/processed/tickets_en_normalized.csv`, including `true_category`, `true_priority`, `ticket_type`, `reference_answer`, and pipe-separated `tags`. The remaining tables are still planned and intentionally not implemented yet.
+Successful responses are persisted automatically. Model load or inference
+failures return a controlled HTTP `503` response and are not recorded as
+successful predictions.
 
-## 12. Planned Model Strategy
+### Dashboard
 
-The project will keep algorithms swappable:
+```text
+GET /api/dashboard/summary
+GET /api/dashboard/recent-predictions?limit=20
+```
 
-- `triage_model_v1`: simple baseline classifier.
-- `triage_model_v2`: embeddings plus classifier.
-- `triage_model_v3`: transformer or deep learning model.
-- `risk_model_v1`: rules.
-- `risk_model_v2`: supervised ML.
-- `retriever_v1`: keyword search.
-- `retriever_v2`: embeddings/RAG.
-- `recommender_v1`: rules.
-- `recommender_v2`: contextual bandit.
-- `judge_v1`: LLM rubric scoring.
-- `judge_v2`: pairwise preference or reward model.
+Dashboard data includes:
 
-The scaffold does not implement any of these models yet.
+- Total tickets.
+- Total routing predictions.
+- Queue distribution.
+- Auto-route and human-review counts.
+- Average confidence.
+- Recent persisted predictions.
 
-## 13. Planned Analytics Strategy
+## Ticket Intelligence Model
 
-Analytics will focus on three levels:
+The canonical runtime model is hosted on Hugging Face:
 
-- **Operational analytics:** volume, backlog, resolution time, approval rate, override rate, escalation rate.
-- **Model analytics:** accuracy, precision, recall, calibration, confidence distributions, error slices.
-- **Business analytics:** estimated time saved, avoided escalations, cost per case, quality improvements, ROI.
+```text
+shubhamjoshipro/opspilot-routing-modernbert-base-clean-v1
+```
 
-## 14. Planned Evaluation Strategy
+Supported queues:
 
-Evaluation will include:
+- `billing_and_payments`
+- `customer_general`
+- `human_resources`
+- `returns_and_exchanges`
+- `sales_and_pre_sales`
+- `service_outages_and_maintenance`
+- `technical_product_support`
 
-- Classification metrics for triage labels.
-- Risk scoring metrics and calibration checks.
-- Retrieval relevance and policy coverage.
-- Response quality and policy compliance rubrics.
-- AI judge scoring with human validation.
-- Human feedback loops for continuous improvement.
-- Responsible AI checks for hallucination risk and unsafe automation.
+The backend:
 
-## 15. Planned Human-In-The-Loop Workflow
+- Loads the tokenizer and classifier from Hugging Face.
+- Caches the loaded model and tokenizer.
+- Uses CUDA when available and CPU otherwise.
+- Applies softmax and validates the seven-label contract.
+- Records model ID, latency, threshold, probabilities, and timestamp.
+- Converts model-unavailable failures into HTTP `503`.
 
-The future system will require human review for high-risk actions, low-confidence predictions, policy-sensitive decisions, and customer-facing drafts. Reviewers should be able to:
+The model runs in the backend, not in Streamlit. The repository does not commit
+model weights or require the frontend to load ML dependencies.
 
-- Approve recommendations.
-- Edit response drafts.
-- Reject AI suggestions.
-- Override category, priority, or risk.
-- Add notes explaining decisions.
-- Escalate cases to a specialist.
-- Feed final outcomes back into evaluation datasets.
+## Database
 
-## 16. Planned Business ROI Logic
+SQLAlchemy is the canonical ORM. PostgreSQL is supported through
+`DATABASE_URL`; SQLite is used when that variable is absent.
 
-Future ROI estimates may combine:
+### Current Tables
 
-- Average handling time reduction.
-- Cases deflected from escalation.
-- Improved first-contact resolution.
-- Reduced manual policy lookup time.
-- Reduced rework due to incorrect responses.
-- Labor cost assumptions.
-- Quality and compliance improvements.
+#### `tickets`
 
-ROI calculations will be presented as decision-support analytics, not as exact financial claims.
+Stores canonical case records, status, source/channel metadata, optional
+ground-truth category and priority, tags, language, and timestamps.
 
-## 17. MVP Roadmap
+#### `ticket_routing_predictions`
 
-- **Phase 0:** Repo scaffold and documentation.
-- **Phase 1:** Postgres plus FastAPI ticket CRUD. Current phase.
-- **Phase 2:** Streamlit case inbox and workspace.
-- **Phase 3:** Baseline ML models.
-- **Phase 4:** Policy retrieval/RAG.
-- **Phase 5:** LLM recommendation and response drafting.
-- **Phase 6:** AI judge and evaluation traces.
-- **Phase 7:** Analytics and ROI dashboard.
-- **Phase 8:** Advanced model experiments.
-- **Phase 9:** Deployment and portfolio case study.
+Stores:
 
-## 18. Future Technical Upgrades
+- Optional linked ticket ID.
+- Subject and body.
+- Predicted queue.
+- Confidence and threshold.
+- Routing decision.
+- Full probabilities JSON.
+- Model ID.
+- Latency.
+- Creation timestamp.
 
-- Background workers for async model jobs.
-- Vector database or Postgres vector extension.
-- Model registry and experiment tracking.
-- Prompt versioning.
-- Evaluation datasets and golden test sets.
-- Role-based access control.
-- Observability, logging, and tracing.
-- CI/CD pipeline.
-- Dockerized local development.
-- Production deployment.
+### Migrations
 
-## 19. Local Setup Instructions For The Scaffold
+Alembic owns schema changes:
 
-Create and activate a virtual environment:
+```bash
+alembic upgrade head
+```
+
+`python -m backend.app.db.init_db` remains a development fallback, but Alembic
+is the canonical migration path.
+
+## Streamlit Frontend
+
+The canonical frontend is:
+
+```text
+frontend/streamlit_app.py
+```
+
+It communicates with FastAPI only over HTTP and never imports the research
+vertical or model code.
+
+Current tabs:
+
+1. **Dashboard**
+   - Total tickets and predictions.
+   - Auto-route and human-review counts.
+   - Average confidence and review rate.
+   - Queue and decision charts.
+   - Recent predictions preview.
+
+2. **Ticket Routing Demo**
+   - Subject and body form.
+   - Queue, confidence, decision, threshold, model ID, latency, and timestamp.
+   - Sorted probability chart.
+   - Automatic refresh after successful persistence.
+
+3. **Recent Predictions**
+   - Newest 20 stored routing records.
+   - Queue, confidence, decision, threshold, latency, timestamp, and subject.
+
+4. **Ticket Inbox**
+   - Database-backed ticket records.
+   - Status, category, priority, source/channel, message, and timestamps.
+
+5. **Model Analytics**
+   - Queue and decision mix.
+   - Auto-route and review rates.
+   - Confidence chart and latency summary from recent predictions.
+   - Clearly labeled as bounded demo analytics.
+
+### Frontend Error Handling
+
+`frontend/api_client.py` provides structured handling for:
+
+- Backend connection failures and timeouts.
+- HTTP `503` model unavailability or cold starts.
+- Request validation errors.
+- Unexpected HTTP responses.
+- Non-JSON and malformed successful responses.
+
+The UI also handles empty ticket/prediction states and validates routing input
+before making an API call.
+
+## Local Setup
+
+### 1. Create an environment
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
 ```
 
-Copy environment variables:
+### 2. Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-Initialize database tables:
+Example:
 
-```bash
-python -m backend.app.db.init_db
+```text
+DATABASE_URL=sqlite:///./opspilot_dev.db
+APP_ENV=development
+OPSPILOT_ROUTING_THRESHOLD=0.80
 ```
 
-Run the backend:
+For PostgreSQL:
+
+```text
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
+```
+
+### 3. Apply migrations
+
+```bash
+alembic upgrade head
+```
+
+### 4. Start FastAPI
 
 ```bash
 uvicorn backend.app.main:app --reload
 ```
 
-Check the health endpoint:
+Backend:
 
-```bash
-curl http://127.0.0.1:8000/health
+```text
+http://localhost:8000
 ```
 
-Run the frontend placeholder:
+Interactive API documentation:
+
+```text
+http://localhost:8000/docs
+```
+
+### 5. Start Streamlit
+
+In another terminal:
 
 ```bash
+export OPSPILOT_API_URL=http://localhost:8000
 streamlit run frontend/streamlit_app.py
 ```
 
-## 20. Railway Postgres Notes
-
-Railway Postgres can be used later for the deployed database. The planned flow:
-
-1. Create a Railway project.
-2. Add a Postgres service.
-3. Copy the database connection string into `DATABASE_URL`.
-4. Configure backend deployment environment variables.
-5. Add migrations only after the data model is implemented.
-
-Phase 1 reads `DATABASE_URL` from `.env`. If `DATABASE_URL` is not set, the backend uses local SQLite at `sqlite:///./opspilot_dev.db`.
-
-## 21. Folder Structure
+Frontend:
 
 ```text
-opspilot-ai/
-  README.md
-  backend/
-  frontend/
-  data/
-  experiments/
-  docs/
-  tests/
+http://localhost:8501
 ```
 
-Detailed structure is included in the repository files and docs.
+### 6. Test the product loop
 
-## 22. Portfolio/Resume Positioning
+1. Open the Ticket Routing Demo tab.
+2. Enter a subject and body.
+3. Submit the ticket.
+4. Review the routing decision and probabilities.
+5. Confirm Dashboard and Recent Predictions update.
 
-OpsPilot AI should be positioned as a production-style applied AI project that connects product thinking, operations analytics, ML system design, human review, evaluation, and measurable business impact.
+If local Torch or Transformers dependencies are unavailable, the backend
+returns HTTP `503` and the frontend displays a controlled cold-start/model
+unavailable message.
 
-It is not intended to be framed as:
+## Testing
 
-- A toy chatbot.
-- A basic dashboard.
-- A Kaggle-only notebook.
-- A single-model demo.
+Run the complete suite:
 
-It is intended to demonstrate the ability to design AI workflows that could be used inside real operations teams.
+```bash
+pytest -q
+```
 
-## 23. Example Future Resume Bullets
+Current coverage includes:
 
-- Designed and built OpsPilot AI, a production-style AI operations copilot for case triage, escalation-risk scoring, policy-grounded recommendations, human review, evaluation, and ROI analytics.
-- Implemented modular model interfaces for swappable triage, risk, retrieval, recommendation, and evaluation components.
-- Built a human-in-the-loop review workflow that captured approvals, overrides, reviewer notes, model versions, and evaluation traces.
-- Developed analytics dashboards tracking operational throughput, model performance, escalation risk, quality metrics, and estimated business ROI.
-- Created a policy-grounded AI recommendation workflow with retrieval evidence, response drafting, hallucination-risk checks, and compliance evaluation.
+- Health endpoint.
+- Ticket CRUD.
+- Routing API contract and threshold behavior.
+- Prediction persistence.
+- Dashboard aggregation and recent records.
+- Controlled HTTP `503` behavior.
+- Frontend API-client paths and error handling.
 
-## 24. Limitations And Responsible AI Considerations
+Compile frontend files:
 
-This repository is only a scaffold. It does not yet include a working product, trained models, retrieval logic, LLM calls, or database implementation.
+```bash
+python -m compileall -q frontend
+```
 
-Future versions should account for:
+## Deployment
 
-- Human approval for high-impact decisions.
-- Clear audit trails for AI-generated recommendations.
-- Model confidence and uncertainty.
-- False positives and false negatives in escalation detection.
-- Policy grounding and citation quality.
-- Hallucination risk.
-- Bias and inconsistent treatment across customer groups.
-- Data privacy and retention.
-- Secure handling of API keys and customer data.
+The repository includes:
 
-OpsPilot AI should assist human operators, not silently automate sensitive decisions without review.
+- A backend `Dockerfile`.
+- CPU PyTorch and Transformers dependencies in `requirements-railway.txt`.
+- Railway start and health-check configuration.
+- PostgreSQL URL normalization.
+- Hugging Face cache configuration under `/tmp`.
+
+Deployment requirements:
+
+1. Configure `DATABASE_URL`.
+2. Run `alembic upgrade head`.
+3. Ensure the backend can download the Hugging Face model.
+4. Confirm CPU memory, cold-start time, and request timeout behavior.
+5. Set `OPSPILOT_API_URL` in the Streamlit environment to the deployed backend.
+
+The current Docker/Railway configuration deploys the FastAPI backend. A
+separate frontend deployment configuration remains future work.
+
+## Research and Training Lab
+
+The Ticket Intelligence research code remains under:
+
+```text
+verticals/ticket-intelligence/ml
+```
+
+It includes:
+
+- Dataset audit and fixed split generation.
+- TF-IDF and logistic-regression baselines.
+- Feature inspection and error analysis.
+- Confidence-threshold analysis.
+- TensorFlow experiments.
+- Transformer and ModernBERT training scripts.
+- Model comparison and responsible-AI documentation.
+
+The public source dataset is:
+
+```text
+Tobi-Bueck/customer-support-tickets
+```
+
+The research lab is intentionally separate from the product runtime. Generated
+datasets, local model artifacts, outputs, and model weights are gitignored.
+
+`verticals/ticket-intelligence/app` is a legacy standalone prototype and is not
+the canonical product frontend or backend.
+
+## Current Limitations
+
+- Routing submissions are logged as predictions but do not automatically create
+  canonical ticket records.
+- Recent-prediction and confidence analytics currently use a bounded result set.
+- There is no curated 500–2,000 record demo seed yet.
+- Human-review decisions, assignments, overrides, and outcomes are not modeled.
+- Authentication and role-based permissions are not implemented.
+- Policy retrieval, recommendations, drafting, and AI evaluation are planned.
+- Cloud model performance and concurrency require deployment validation.
+- The frontend deployment is not yet included in the Docker/Railway setup.
+
+## Roadmap
+
+### Stage 1: Product Backbone
+
+Implemented:
+
+- Canonical FastAPI service.
+- Ticket CRUD.
+- Final routing contract.
+- Prediction logging.
+- Dashboard APIs.
+- Alembic migrations.
+
+### Stage 2: Canonical Streamlit MVP
+
+Implemented:
+
+- HTTP-only API client.
+- Dashboard.
+- Ticket Routing Demo.
+- Recent Predictions.
+- Ticket Inbox.
+- Model Analytics.
+- Offline, validation, and model-unavailable states.
+
+### Stage 3: Curated Demo Data
+
+Planned:
+
+- Repeatable seed process.
+- Approximately 500–2,000 representative records.
+- No full training-dataset import.
+
+### Stage 4: Human Review Workflow
+
+Planned:
+
+- Review assignments.
+- Approvals, rejections, and escalations.
+- Queue and priority overrides.
+- Reviewer notes and final outcomes.
+
+### Stage 5: Cloud Hardening
+
+Planned:
+
+- Migration automation.
+- Readiness and model-warmup checks.
+- Structured logs and monitoring.
+- Cold-start, memory, latency, and concurrency validation.
+- Frontend deployment configuration.
+
+### Stage 6: Additional AI Modules
+
+Planned:
+
+- Policy retrieval.
+- Grounded next-best-action recommendations.
+- Response drafting.
+- Evaluation traces.
+- Controlled tool and agent orchestration.
+
+## Responsible AI Principles
+
+- AI output is decision support, not unquestioned truth.
+- Low-confidence outputs require human review.
+- Sensitive actions should require explicit approval.
+- Model IDs, thresholds, probabilities, and timestamps should remain auditable.
+- Training data and production customer data must remain clearly separated.
+- Production use requires retention, redaction, privacy, bias, and monitoring
+  policies.
+- Future generated recommendations should preserve supporting evidence.
+
+## Documentation
+
+- [Product Architecture](docs/PRODUCT_ARCHITECTURE.md)
+- [Backend Guide](backend/README.md)
+- [Frontend Guide](frontend/README.md)
+- [Architecture Notes](docs/architecture.md)
+- [Data Model](docs/data_model.md)
+- [Evaluation Plan](docs/evaluation_plan.md)
+- [Analytics Plan](docs/analytics_plan.md)
+- [Ticket Intelligence Vertical](verticals/ticket-intelligence/README.md)
+
+## Positioning
+
+OpsPilot demonstrates the design of an applied AI product that combines:
+
+- Product and workflow architecture.
+- Backend and database engineering.
+- Specialized model integration.
+- Human-in-the-loop controls.
+- Auditability and model observability.
+- Operator-facing analytics.
+- A clean boundary between research and deployed product code.
+
+The project should be presented as an evolving AI operations platform, not as a
+toy chatbot, a single notebook, or an autonomous decision-maker.

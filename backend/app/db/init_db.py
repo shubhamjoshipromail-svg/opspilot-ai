@@ -6,7 +6,7 @@ Run from the repository root:
 """
 
 from backend.app.database import Base, engine
-from backend.app.models import Ticket  # noqa: F401 - imported so metadata registers the model
+from backend.app.models import Ticket, TicketRoutingPrediction  # noqa: F401
 
 
 def init_db() -> None:

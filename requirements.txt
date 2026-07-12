@@ -1,11 +1,15 @@
 fastapi
 uvicorn
 sqlalchemy
+alembic
 psycopg2-binary
 pydantic
 python-dotenv
 streamlit
 pandas
 scikit-learn
+matplotlib
+torch
+transformers
 pytest
 requests
