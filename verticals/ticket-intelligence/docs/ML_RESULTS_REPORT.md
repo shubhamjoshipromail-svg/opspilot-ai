@@ -797,3 +797,64 @@ python ml/ticket_intelligence/threshold_analysis.py \
 ```
 
 It reports coverage, accuracy, and macro-F1 at confidence thresholds from 0.00 to 0.95. This supports the human-in-the-loop routing design by showing how many tickets can be auto-routed at each confidence level and how many should be sent to review.
+
+## 24. Correction: The 0.52 to 0.73 Comparison
+
+The improvement from `0.5229` to approximately `0.73` is frequently quoted as a
+single modeling gain. It is not, and should not be presented as one.
+
+| Run | Taxonomy | Classes | Accuracy |
+|---|---|---:|---:|
+| ModernBERT-base baseline | original | 10 | 0.5229 |
+| ModernBERT-base + `clean_v1` | merged | 7 | ~0.73 |
+
+The `clean_v1` run merges `technical_support`, `it_support` and
+`product_support` into one class, and `customer_service` with `general_inquiry`
+into another. A 7-way problem is materially easier than a 10-way one, so part
+of the gain is the relabeling rather than the model.
+
+The defensible claim is that **queue taxonomy design contributed as much to
+routing quality as model architecture did** — a more useful finding than a
+headline accuracy number, and one supported by the confusion matrix in
+section 7, where the largest error cells are exactly the queues that `clean_v1`
+merges.
+
+Two open items:
+
+- The `clean_v1` metrics JSON was produced in Colab and never copied back into
+  the repository. Until it is, `~0.73` is quoted, not reproducible in-repo.
+- No `clean_v1` baseline comparison exists for TF-IDF. Re-running the v1
+  baseline under the merged taxonomy would separate the taxonomy effect from
+  the architecture effect cleanly.
+
+## 25. Zero-Shot Benchmark: Jev (TypeSafe System One)
+
+A zero-shot typed-decision model was benchmarked against the fine-tuned
+classifier on the same `clean_v1` label space.
+
+| System | Training data | Accuracy | Macro-F1 | ECE |
+|---|---|---:|---:|---:|
+| Jev, zero-shot | none | 0.5458 | 0.3289 | 0.2896 |
+| ModernBERT-base `clean_v1` | 16,622 | ~0.73 | — | not measured |
+| Majority-class baseline | — | 0.5946 | — | — |
+
+Measured on the validation split (n=3,562), 337ms median latency, $0.1285
+total, zero request failures.
+
+Jev did not clear the majority-class baseline, and its confidence was
+systematically overconfident: in the 1,968 cases reporting mean confidence
+0.984, actual accuracy was 0.650.
+
+The dominant error is bidirectional confusion between `customer_general` and
+`technical_product_support` (305 and 279 cases respectively), matching the
+largest cells in the section 7 confusion matrix. This supports the
+`possible_label_noise` and `label_overlap` error types already recorded in
+section 8, and suggests a ceiling that constrains every model evaluated here.
+
+A notable implication for section 17: the weak risk labels are derived from the
+same keyword rules the router uses, so a supervised risk model can only relearn
+those rules. A zero-shot judgment is the only option that does not require
+escalation labels the dataset does not contain.
+
+Full methodology, per-class results, calibration table and recommended next
+steps: `docs/experiments/jev_vs_modernbert.md`.

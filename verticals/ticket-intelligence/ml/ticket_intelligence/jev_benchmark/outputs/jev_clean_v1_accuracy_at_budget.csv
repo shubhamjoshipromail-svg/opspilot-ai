@@ -1,0 +1,5 @@
+human_review_budget,auto_routed,accuracy_on_auto,macro_f1_on_auto,min_confidence_kept
+0.1,3206,0.5633,0.3254,0.5
+0.2,2850,0.5916,0.3359,0.63
+0.3,2493,0.6141,0.337,0.76
+0.5,1781,0.6569,0.3516,0.94

@@ -117,6 +117,27 @@ Current first ModernBERT-base parent_queue result:
 - Macro-F1: `0.4725`
 - Weighted-F1: `0.5158`
 
+A later run using `--label-map clean_v1` reports approximately `0.73` accuracy.
+That figure is on a **7-class** merged taxonomy and is not directly comparable
+to the 10-class `0.5229` above; part of the difference is the relabeling rather
+than the model. It is also quoted from an external run whose metrics JSON has
+not been restored to this repository. See `ML_RESULTS_REPORT.md` section 24.
+
+### Zero-shot comparison
+
+Benchmarked against Jev (TypeSafe System One) on the same `clean_v1` label
+space, validation split, n=3,562:
+
+| System | Training data | Accuracy | ECE |
+|---|---|---:|---:|
+| Jev, zero-shot | none | 0.5458 | 0.2896 |
+| ModernBERT `clean_v1` | 16,622 | ~0.73 | not measured |
+| Majority baseline | — | 0.5946 | — |
+
+The fine-tuned model wins decisively. Note that **this model's own calibration
+has not been measured**, while the routing layer gates on its confidence — see
+Future Work. Full write-up: `docs/experiments/jev_vs_modernbert.md`.
+
 The next v2 experiments add:
 
 - unique `--run-name` outputs to avoid overwriting prior runs
@@ -170,6 +191,10 @@ Track:
 
 ## Future Work
 
+- **Measure this model's expected calibration error.** `routing.py` gates on
+  its confidence at a 0.65 threshold, but that confidence has never been
+  validated against observed accuracy. The zero-shot benchmark found severe
+  overconfidence in a comparable model, so this should not be assumed.
 - Calibrate model confidence.
 - Add operational metadata for priority and escalation risk.
 - Run and compare the ModernBERT parent_queue benchmark on Colab/GPU.

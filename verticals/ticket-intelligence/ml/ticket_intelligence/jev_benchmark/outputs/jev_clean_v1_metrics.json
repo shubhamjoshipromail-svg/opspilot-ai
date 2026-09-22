@@ -1,0 +1,21 @@
+{
+  "taxonomy": "clean_v1",
+  "n": 3562,
+  "accuracy": 0.5458,
+  "macro_f1": 0.3289,
+  "weighted_f1": 0.5552,
+  "ece": 0.2896,
+  "latency_p50_ms": 337.0,
+  "latency_p95_ms": 448.6,
+  "total_input_tokens": 3060174,
+  "estimated_cost_usd": 0.128527,
+  "majority_class_baseline": 0.5946,
+  "beats_majority_baseline": false,
+  "modernbert_baseline": {
+    "accuracy": 0.73,
+    "macro_f1": null,
+    "weighted_f1": null,
+    "source": "repo description (approximate)"
+  },
+  "accuracy_delta_vs_modernbert": -0.1842
+}
