@@ -1,0 +1,27 @@
+{
+  "name": "modernbert_clean_v1_test",
+  "n": 3563,
+  "accuracy": 0.7398,
+  "accuracy_ci95": [
+    0.7258,
+    0.7544
+  ],
+  "macro_f1": 0.5759,
+  "macro_f1_ci95": [
+    0.5465,
+    0.6034
+  ],
+  "weighted_f1": 0.7208,
+  "weighted_f1_ci95": [
+    0.7053,
+    0.7374
+  ],
+  "ece": 0.0803,
+  "majority_class": "technical_product_support",
+  "majority_baseline": 0.5947,
+  "lift_over_majority": 0.1451,
+  "beats_majority_at_95ci": true,
+  "bootstrap_resamples": 2000,
+  "latency_p50_ms": 56.71,
+  "latency_p95_ms": 84.39
+}

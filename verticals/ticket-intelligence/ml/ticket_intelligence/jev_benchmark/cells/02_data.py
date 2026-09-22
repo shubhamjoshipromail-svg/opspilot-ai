@@ -1,24 +1,29 @@
-"""## 2. Load the fixed test split
+"""## 2. Load the fixed split
 
 Searches Drive for `ticket_splits.zip` (uploaded from the local repo) and
-extracts `test.csv`. Using the saved split matters: it is the exact set the
-published ModernBERT numbers were measured on."""
+extracts the split CSVs. Using the saved splits matters: they are the exact
+rows the published ModernBERT metrics were measured on.
+
+Set `SPLIT` to `val` for the published head-to-head (3,562 rows), or `test`
+(3,563) for a final locked evaluation."""
+
+SPLIT = 'val'
 
 def find_split() -> Path:
     root = Path('/content/drive/MyDrive')
-    direct = list(root.rglob('test.csv'))
+    direct = list(root.rglob(f'{SPLIT}.csv'))
     for candidate in direct:
         if 'opspilot' in str(candidate).lower() or 'ticket' in str(candidate).lower():
             return candidate
     for archive in root.rglob('ticket_splits.zip'):
         with zipfile.ZipFile(archive) as zf:
             zf.extractall(WORK)
-        found = list(WORK.rglob('test.csv'))
+        found = list(WORK.rglob(f'{SPLIT}.csv'))
         if found:
             return found[0]
     if direct:
         return direct[0]
-    raise FileNotFoundError('No test.csv or ticket_splits.zip found under MyDrive')
+    raise FileNotFoundError(f'No {SPLIT}.csv or ticket_splits.zip found under MyDrive')
 
 TEST_PATH = find_split()
 df = pd.read_csv(TEST_PATH)

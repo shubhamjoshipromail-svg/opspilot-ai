@@ -142,13 +142,31 @@ space, validation split, n=3,562:
 Paired on identical rows: ModernBERT exclusively correct on 883 tickets, Jev
 on 229, McNemar p = 5.5e-91.
 
-**Calibration is measured and acceptable.** ECE 0.0841 supports the use of a
-confidence threshold in `routing.py`. At the 0.80 gate the model auto-routes
-61.8% of tickets at 86.5% accuracy.
+**Calibration is measured and acceptable.** ECE 0.0841 on validation, 0.0803
+on the held-out test split, supporting the use of a confidence threshold in
+`routing.py`. At the 0.80 gate the model auto-routes 62.5% of test tickets at
+85.0% accuracy.
 
-The fine-tuned model wins decisively. Note that **this model's own calibration
-has not been measured**, while the routing layer gates on its confidence — see
-Future Work. Full write-up: `docs/experiments/jev_vs_modernbert.md`.
+### Locked test-set result
+
+Development used validation; the test split was evaluated once at the end.
+95% CIs are percentile bootstrap, 2,000 resamples.
+
+| Metric | Test (n=3,563) | 95% CI |
+|---|---:|---|
+| Accuracy | 0.7398 | [0.7258, 0.7544] |
+| Macro-F1 | 0.5759 | [0.5465, 0.6034] |
+| Weighted-F1 | 0.7208 | [0.7053, 0.7374] |
+| ECE | 0.0803 | — |
+| Majority baseline | 0.5947 | — |
+
+**Per-class calibration is uneven.** `returns_and_exchanges` has ECE 0.1948
+against the global 0.0803. A single confidence threshold is therefore not
+equally safe across queues; per-class thresholds are recommended before this
+is relied on in production.
+
+The fine-tuned model wins decisively. Full write-up:
+`docs/experiments/jev_vs_modernbert.md`.
 
 The next v2 experiments add:
 

@@ -28,9 +28,59 @@ tokenizer and batching details. Both systems have been run row-by-row, so the
 comparison is paired: ModernBERT is exclusively correct on 883 tickets, Jev on
 229 (McNemar p = 5.5e-91). The gap is not sampling noise.
 
+### Final held-out evaluation
+
+Development and model selection happened on validation. The test split was
+touched once, at the end, and these numbers are locked. 95% CIs are percentile
+bootstrap over 2,000 ticket resamples.
+
+| Metric | Test (n=3,563) | 95% CI |
+|---|---:|---|
+| Accuracy | **0.7398** | [0.7258, 0.7544] |
+| Macro-F1 | 0.5759 | [0.5465, 0.6034] |
+| Weighted-F1 | 0.7208 | [0.7053, 0.7374] |
+| ECE | 0.0803 | — |
+| Majority baseline | 0.5947 | — |
+| Latency p50 / p95 | 56.7ms / 84.4ms | — |
+
+Test accuracy (0.7398) exceeds validation (0.7294), so the development process
+did not overfit the validation set. The lift over the majority baseline is
++0.1451 and the CI lower bound clears it, so the model is doing real work —
+but see the per-class table below before reading 74% as "good".
+
+| Queue | Precision | Recall | Support |
+|---|---:|---:|---:|
+| technical_product_support | 0.7640 | **0.9136** | 2,119 |
+| billing_and_payments | 0.8408 | 0.7273 | 363 |
+| service_outages_and_maintenance | 0.7850 | 0.5957 | 141 |
+| customer_general | 0.5809 | 0.4037 | 587 |
+| sales_and_pre_sales | 0.5970 | 0.3704 | 108 |
+| returns_and_exchanges | 0.5294 | 0.3068 | 176 |
+| human_resources | 0.6774 | 0.3043 | 69 |
+
+Macro recall is 0.5174 against macro precision of 0.6821. The model
+systematically under-predicts minority queues and over-predicts the majority
+one — a textbook class-imbalance signature, and the clearest improvement
+target. `train_modernbert.py` already exposes `--class-weighting
+sqrt_balanced`; the published run used `none`.
+
 ### Confidence gating
 
-Coverage and accuracy on auto-routed tickets, ModernBERT, validation split:
+Coverage and accuracy on auto-routed tickets, test split:
+
+| Threshold | Coverage | Accuracy on auto-routed | Errors auto-routed |
+|---:|---:|---:|---:|
+| 0.65 | 77.5% | 81.2% | 519 |
+| 0.70 | 73.0% | 82.2% | 463 |
+| **0.80** | **62.5%** | **85.0%** | 334 |
+| 0.90 | 47.0% | 89.4% | 177 |
+
+**Per-class calibration matters more than the global number.** Global ECE is
+0.0803, but `returns_and_exchanges` has an ECE of 0.1948 — 2.4x worse. A single
+global threshold therefore treats a well-calibrated queue and a badly
+calibrated one identically. Per-class thresholds are the obvious fix.
+
+Validation-split figures, for comparison:
 
 | Threshold | Auto-routed | Accuracy on auto-routed |
 |---:|---:|---:|
@@ -139,6 +189,16 @@ likely cause is informative: a fine-tuned model learns *this dataset's filing
 conventions*, which no zero-shot model can infer from a prompt.
 
 Full write-up, methodology and next steps: **[docs/experiments/jev_vs_modernbert.md](docs/experiments/jev_vs_modernbert.md)**
+
+## Experimental protocol
+
+Development on validation, one locked evaluation on test, bootstrap CIs on
+headline metrics, McNemar for paired model comparisons, and calibration
+reported alongside accuracy wherever confidence drives a routing decision.
+
+The experiment log — including hypotheses and success criteria written before
+each run, and the queued experiments ranked by expected value — is in
+**[docs/experiments/README.md](docs/experiments/README.md)**.
 
 ## Implementation status
 

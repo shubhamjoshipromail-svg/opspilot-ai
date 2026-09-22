@@ -11,7 +11,8 @@ Resumable: re-running appends only the tickets not already present in --out.
 Usage:
     export TYPESAFE_API_KEY=...
     python run_jev.py --limit 50            # smoke test first
-    python run_jev.py                       # full 3,563-row split
+    python run_jev.py                       # full test split (3,563 rows)
+    python run_jev.py --input ../../../data/processed/val.csv   # validation (3,562)
 """
 
 from __future__ import annotations

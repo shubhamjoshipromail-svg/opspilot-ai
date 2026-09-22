@@ -131,7 +131,10 @@ Logistic Regression settings:
 | `solver` | `liblinear` |
 | `random_state` | `42` |
 
-No transformer or fine-tuned language model is currently trained or used. TensorFlow/Keras training scripts are available for Colab GPU training, but they do not replace the committed TF-IDF baseline until their held-out metrics are reviewed.
+**Scope note:** this section documents the V1 baseline only. A fine-tuned
+transformer *is* now the production model — see sections 21 onward. At the time
+this section was written, TF-IDF was the committed baseline and no transformer
+had been trained.
 
 Model artifacts are saved in:
 
@@ -886,3 +889,73 @@ escalation labels the dataset does not contain.
 
 Full methodology, per-class results, calibration table and recommended next
 steps: `docs/experiments/jev_vs_modernbert.md`.
+
+## 26. Locked Held-Out Test Evaluation
+
+All development, taxonomy iteration, threshold selection and model comparison
+used the validation split. The test split was evaluated once, after that work
+was complete. These numbers are final for this model version.
+
+| Metric | Test (n=3,563) | 95% CI | Validation |
+|---|---:|---|---:|
+| Accuracy | 0.7398 | [0.7258, 0.7544] | 0.7294 |
+| Macro-F1 | 0.5759 | [0.5465, 0.6034] | 0.5630 |
+| Weighted-F1 | 0.7208 | [0.7053, 0.7374] | — |
+| ECE | 0.0803 | — | 0.0841 |
+| Majority baseline | 0.5947 | — | 0.5946 |
+
+Confidence intervals are percentile bootstrap over 2,000 ticket resamples
+(`final_eval.py`). Test accuracy exceeds validation accuracy, indicating the
+development process did not overfit the validation split. The lower CI bound
+(0.7258) clears the majority baseline (0.5947) comfortably.
+
+### Per-class, test split
+
+| Queue | Precision | Recall | F1 | Support |
+|---|---:|---:|---:|---:|
+| technical_product_support | 0.7640 | 0.9136 | 0.8322 | 2,119 |
+| billing_and_payments | 0.8408 | 0.7273 | 0.7799 | 363 |
+| service_outages_and_maintenance | 0.7850 | 0.5957 | 0.6774 | 141 |
+| sales_and_pre_sales | 0.5970 | 0.3704 | 0.4571 | 108 |
+| customer_general | 0.5809 | 0.4037 | 0.4764 | 587 |
+| returns_and_exchanges | 0.5294 | 0.3068 | 0.3885 | 176 |
+| human_resources | 0.6774 | 0.3043 | 0.4200 | 69 |
+
+Macro recall (0.5174) trails macro precision (0.6821) by a wide margin. The
+model is conservative about predicting minority queues and over-assigns the
+majority one, which is the expected consequence of training with
+`class_weighting: none` on a distribution where one class holds 59.5% of the
+mass. This is the target of experiment E6 in `docs/experiments/README.md`.
+
+### Coverage curve, test split
+
+| Threshold | Coverage | Accuracy on auto-routed | Errors auto-routed |
+|---:|---:|---:|---:|
+| 0.50 | 90.8% | 76.97% | 745 |
+| 0.65 | 77.5% | 81.20% | 519 |
+| 0.70 | 73.0% | 82.19% | 463 |
+| 0.80 | 62.5% | 85.00% | 334 |
+| 0.90 | 47.0% | 89.43% | 177 |
+
+This supersedes the v1 TF-IDF sweep in section 9, which auto-routed 0.03% of
+tickets at the 0.80 threshold. The current gate at 0.65 (from `routing.py`)
+auto-routes 77.5% at 81.2% accuracy, admitting 519 misroutes. Raising it to
+0.80 cuts misroutes to 334 while still covering 62.5%.
+
+### Per-class calibration
+
+Global ECE of 0.0803 conceals substantial variation:
+
+| Predicted queue | n | Mean confidence | Precision | ECE |
+|---|---:|---:|---:|---:|
+| billing_and_payments | 314 | 0.8867 | 0.8408 | 0.0508 |
+| service_outages_and_maintenance | 107 | 0.8641 | 0.7850 | 0.0790 |
+| technical_product_support | 2,534 | 0.8420 | 0.7640 | 0.0881 |
+| customer_general | 408 | 0.6438 | 0.5809 | 0.0926 |
+| sales_and_pre_sales | 67 | 0.6543 | 0.5970 | 0.1135 |
+| human_resources | 31 | 0.7735 | 0.6774 | 0.1239 |
+| **returns_and_exchanges** | 102 | 0.6606 | 0.5294 | **0.1948** |
+
+`returns_and_exchanges` is 2.4x worse calibrated than the global figure. A
+single threshold applied across all queues is therefore not uniformly safe,
+which motivates experiment E7.

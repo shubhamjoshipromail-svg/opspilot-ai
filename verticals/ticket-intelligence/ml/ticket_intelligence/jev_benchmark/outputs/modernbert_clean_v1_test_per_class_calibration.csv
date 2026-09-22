@@ -1,0 +1,8 @@
+predicted_label,n,mean_confidence,precision,ece
+technical_product_support,2534,0.842,0.764,0.0881
+customer_general,408,0.6438,0.5809,0.0926
+billing_and_payments,314,0.8867,0.8408,0.0508
+service_outages_and_maintenance,107,0.8641,0.785,0.079
+returns_and_exchanges,102,0.6606,0.5294,0.1948
+sales_and_pre_sales,67,0.6543,0.597,0.1135
+human_resources,31,0.7735,0.6774,0.1239

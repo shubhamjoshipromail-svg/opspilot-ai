@@ -39,8 +39,10 @@ def main() -> None:
         "metadata": {},
         "source": to_lines(
             "# Jev vs fine-tuned ModernBERT - parent_queue routing\n\n"
-            "Head-to-head on the fixed OpsPilot test split (3,563 tickets, "
-            "`random_state=42`), 7-class `clean_v1` taxonomy.\n\n"
+            "Head-to-head on a fixed OpsPilot split, 7-class `clean_v1` "
+            "taxonomy, `random_state=42`. The published head-to-head uses the "
+            "validation split (3,562 rows); the test split (3,563) is reserved "
+            "for final locked evaluation.\n\n"
             "- **ModernBERT**: `shubhamjoshipro/opspilot-routing-modernbert-base-clean-v1`, "
             "fine-tuned on 16,622 examples\n"
             "- **Jev**: zero-shot, no training data\n\n"

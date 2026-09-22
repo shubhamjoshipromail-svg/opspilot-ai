@@ -1,4 +1,7 @@
-"""Run the fine-tuned ModernBERT from the Hub on the same fixed test split.
+"""Run the fine-tuned ModernBERT from the Hub on a fixed split.
+
+Defaults to the test split; pass --input .../val.csv for the validation split
+that the published eval_* metrics and the Jev head-to-head use.
 
 Produces predictions in the identical schema to run_jev.py, so the two can be
 compared row by row (McNemar) and on the same coverage curve.
