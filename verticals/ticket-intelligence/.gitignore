@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+.streamlit/
+ml/ticket_intelligence/artifacts/
+ml/ticket_intelligence/outputs/
+data/processed/*.csv
+data/processed/*.json
+data/smoke_processed/
