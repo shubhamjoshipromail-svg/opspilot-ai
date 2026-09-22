@@ -35,14 +35,22 @@ none. That is the comparison being made, not a flaw in it.
 
 ## Results
 
+Both systems run on the same 3,562 validation rows, row by row.
+
 | Metric | Jev (zero-shot) | ModernBERT (fine-tuned) |
 |---|---:|---:|
-| Accuracy | 0.5458 | ~0.73 |
-| Macro-F1 | 0.3289 | not recovered |
-| ECE (calibration) | 0.2896 | not yet measured |
-| Latency p50 / p95 | 337ms / 449ms | not yet measured |
+| Accuracy | 0.5458 | **0.7294** |
+| Macro-F1 | 0.3289 | 0.5630 |
+| ECE (calibration) | 0.2896 | **0.0841** |
+| Latency p50 | 337ms | 55ms (local MPS, batched) |
 | Cost | $0.1285 per 3,562 tickets | GPU training + hosting |
-| Failures | 0 | — |
+| Failures | 0 | 0 |
+
+**Paired result:** ModernBERT is exclusively correct on 883 tickets, Jev on
+229. McNemar exact p = 5.5e-91. The gap is not sampling noise.
+
+The local run reproduces 0.7294 against the 0.7313 recorded in the published
+`trainer_state.json`, a 0.2pp difference from tokenizer and batching details.
 
 **Majority-class baseline: 0.5946.** Always guessing
 `technical_product_support` beats Jev here. That is the number that settles it.
@@ -80,6 +88,14 @@ Systematic overconfidence across every bin. Confidence gating does not rescue
 it: routing only the most confident half still yields 65.7% accuracy, below
 the fine-tuned model's overall score.
 
+The fine-tuned model, measured the same way on the same rows, has ECE 0.0841 —
+3.4x better. Its confidence can be thresholded; at a 0.80 gate it auto-routes
+61.8% of tickets at 86.5% accuracy.
+
+This is the more consequential finding. An accuracy gap costs you correctness;
+a calibration gap costs you the ability to tell when you are wrong, which is
+what the entire human-review design depends on.
+
 ## Why it lost
 
 The dominant error is **bidirectional**: 305 `customer_general` predicted as
@@ -107,9 +123,8 @@ decisively on accuracy, and a zero-shot model's confidence should not be
 trusted as a routing gate without measuring its calibration on your own data.
 
 **Does not show:** that Jev is a weak model. One task, one criteria design,
-zero-shot, against a specialist trained on the exact distribution. The
-comparison is also not yet paired — Jev ran on validation, the ModernBERT
-figure is from test. Treat the gap as directionally right and precisely wrong.
+zero-shot, against a specialist trained on the exact distribution. A different
+task, or richer criteria, could land differently.
 
 ## Where a decision model does belong
 
@@ -164,16 +179,13 @@ is a labeling artifact — which reframes every accuracy number in this repo.
 1. **Blind-label 50 disagreements.** Cheapest, highest information. Determines
    whether the label-noise hypothesis holds, which affects every reported
    number here. One hour, no cost.
-2. **Run both on the same split** for a paired comparison (McNemar, shared
-   coverage curve). Blocked on recovering the ModernBERT predictions CSV from
-   Colab.
-3. **Measure ModernBERT's ECE.** Its calibration is currently assumed, not
-   measured, and the routing layer gates on it. If it is also overconfident,
-   the confidence thresholds in `routing.py` need recalibration regardless of
-   which model is used.
+2. ~~Run both on the same split for a paired comparison.~~ **Done** —
+   `run_modernbert.py` pulls the published checkpoint and scores the same rows.
+3. ~~Measure ModernBERT's ECE.~~ **Done** — 0.0841. The confidence gate in
+   `routing.py` is sound, and could reasonably be raised from 0.65 to 0.80.
 4. **Prototype the escalation `Noul`** against hand-labeled escalation cases.
-   The most promising of the four, and it competes against a keyword list
-   rather than against a trained transformer.
+   The most promising of the four placements below, and it competes against a
+   keyword list rather than against a trained transformer.
 
 ## Reproducing
 

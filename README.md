@@ -12,30 +12,62 @@ zero-shot decision model that lost.
 
 ## Results
 
-Ticket routing from `subject + body`, fixed test split, `random_state=42`.
+Ticket routing from `subject + body`, fixed splits, `random_state=42`.
 
-| Model | Taxonomy | Accuracy | Macro-F1 | Trained on |
-|---|---|---:|---:|---|
-| TF-IDF + Logistic Regression | 10-class | 0.4409 | 0.4121 | 16,622 |
-| ModernBERT-base | 10-class | 0.5229 | 0.4725 | 16,622 |
-| **ModernBERT-base + `clean_v1`** | **7-class** | **~0.73** | — | 16,622 |
-| Jev (TypeSafe System One) | 7-class | 0.5458 | 0.3289 | **0 — zero-shot** |
-| *Majority-class baseline* | *7-class* | *0.5946* | *—* | *—* |
+| Model | Taxonomy | Split | Accuracy | Macro-F1 | Weighted-F1 | Trained on |
+|---|---|---|---:|---:|---:|---|
+| TF-IDF + Logistic Regression | 10-class | test | 0.4409 | 0.4121 | 0.4430 | 16,622 |
+| ModernBERT-base | 10-class | unrecorded | 0.5229 | 0.4725 | 0.5158 | 16,622 |
+| **ModernBERT-base + `clean_v1`** | **7-class** | **validation** | **0.7313** | 0.5630 | **0.7127** | 16,622 |
+| Jev (TypeSafe System One) | 7-class | validation | 0.5458 | 0.3289 | 0.5552 | **0 — zero-shot** |
+| *Majority-class baseline* | *7-class* | *validation* | *0.5946* | *—* | *—* | *—* |
+
+Re-running the published checkpoint locally on the same split reproduces
+`0.7294` against the recorded `0.7313`, a 0.2pp difference attributable to
+tokenizer and batching details. Both systems have been run row-by-row, so the
+comparison is paired: ModernBERT is exclusively correct on 883 tickets, Jev on
+229 (McNemar p = 5.5e-91). The gap is not sampling noise.
+
+### Confidence gating
+
+Coverage and accuracy on auto-routed tickets, ModernBERT, validation split:
+
+| Threshold | Auto-routed | Accuracy on auto-routed |
+|---:|---:|---:|
+| 0.70 | 71.8% | 83.4% |
+| 0.75 | 66.5% | 85.0% |
+| **0.80** | **61.8%** | **86.5%** |
+| 0.85 | 56.0% | 88.5% |
+| 0.90 | 48.9% | 90.3% |
+
+**Calibration:** ModernBERT's expected calibration error is 0.0841. The
+zero-shot model measured 0.2896 on the same rows — 3.4x worse. This matters
+more than the accuracy gap, because the routing layer gates on confidence: a
+miscalibrated model does not just make mistakes, it makes them while claiming
+to be certain.
+
+The `clean_v1` figures are reproducible from the published training run:
+[`trainer/checkpoint-3117/trainer_state.json`](https://huggingface.co/shubhamjoshipro/opspilot-routing-modernbert-base-clean-v1/raw/main/trainer/checkpoint-3117/trainer_state.json)
+in the model repository records `eval_accuracy` 0.73133, `eval_macro_f1`
+0.56304 and `eval_weighted_f1` 0.71272 at epoch 3, with `training_config.json`
+confirming the run name, label map and seed.
 
 **Read the taxonomy column before the accuracy column.** The jump from 0.5229
-to ~0.73 is *not* a pure modeling gain — it combines a real improvement with a
+to 0.7313 is *not* a pure modeling gain — it combines a real improvement with a
 relabeling that merged four overlapping queues into two. A 7-class problem is
 easier than a 10-class one. The honest claim is that queue design mattered as
 much as architecture, which is itself the more interesting finding.
 
 Two caveats stated plainly:
 
-- The ~0.73 figure is **approximate and unverified in-repo** — it was produced
-  in Colab and the metrics JSON was never copied back. Recovering it is the
-  first open task below.
-- The Jev number is measured on the **validation** split; the ModernBERT
-  numbers are **test**. Same size, same stratification, but not a like-for-like
-  comparison until both run on the same rows.
+- **The splits are not consistently recorded.** The `clean_v1` and Jev numbers
+  are both validation, so that comparison is like-for-like. The TF-IDF figure
+  is test. Which split produced the 10-class ModernBERT result was never
+  written down, so treat the 0.5229 to 0.7313 delta as indicative rather than
+  exact until it is re-measured.
+- **Macro-F1 lags accuracy badly** in every run. At 0.5630 against 0.7313, the
+  `clean_v1` model is carried by the majority queue and is weak on the small
+  ones. Accuracy alone overstates how well this works.
 
 ## What the routing layer actually does
 
@@ -95,9 +127,12 @@ A controlled test of whether a zero-shot typed-decision model can replace a
 fine-tuned encoder on this task.
 
 **It cannot — not here.** Jev scored 0.5458 against the fine-tuned model's
-~0.73, and did not clear the 0.5946 majority-class baseline. Its calibration
-was also poor on this task (ECE 0.2896): where it reported 0.98 confidence,
-actual accuracy was 0.65.
+0.7294 on the same validation rows, and did not clear the 0.5946
+majority-class baseline. On a paired test the fine-tuned model is exclusively
+correct on 883 tickets to Jev's 229 (McNemar p = 5.5e-91).
+
+Calibration was the sharper failure: ECE 0.2896 against ModernBERT's 0.0841.
+Where Jev reported 0.98 confidence, actual accuracy was 0.65.
 
 The result is worth keeping precisely because it is negative, and because the
 likely cause is informative: a fine-tuned model learns *this dataset's filing
@@ -148,10 +183,10 @@ Ordered by expected value, not by ease.
    `customer_general` / `technical_product_support` disagreements blind. If the
    labels are ambiguous to a human, every reported ceiling is a dataset
    artifact and the 73% partly measures memorized convention. Costs an hour.
-2. **Recover the `clean_v1` metrics JSON** from Colab so the headline number is
-   reproducible in-repo rather than quoted.
-3. **Run both systems on the same split** to make the Jev comparison paired,
-   enabling McNemar and a shared coverage curve.
+2. **Record the 10-class ModernBERT split.** It is the one number in the table
+   whose provenance is unknown, and it anchors the taxonomy comparison.
+3. **Re-measure the 10-class run** so the taxonomy delta rests on a recorded
+   split rather than an assumed one.
 4. **Add metadata features** (`ticket_type`, `tags`, channel) — the current
    models use text alone and priority especially needs more.
 5. **Raise auto-route coverage** at fixed precision. This is the number that

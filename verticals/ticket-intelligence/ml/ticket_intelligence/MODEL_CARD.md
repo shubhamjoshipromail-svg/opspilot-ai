@@ -117,22 +117,34 @@ Current first ModernBERT-base parent_queue result:
 - Macro-F1: `0.4725`
 - Weighted-F1: `0.5158`
 
-A later run using `--label-map clean_v1` reports approximately `0.73` accuracy.
+A later run using `--label-map clean_v1` reaches `0.7313` accuracy,
+`0.5630` macro-F1 and `0.7127` weighted-F1 on the validation split. Those
+figures come from the published training run
+(`trainer/checkpoint-3117/trainer_state.json` in the Hugging Face model repo),
+not from this repository.
+
 That figure is on a **7-class** merged taxonomy and is not directly comparable
 to the 10-class `0.5229` above; part of the difference is the relabeling rather
-than the model. It is also quoted from an external run whose metrics JSON has
-not been restored to this repository. See `ML_RESULTS_REPORT.md` section 24.
+than the model, and the 10-class run's split was never recorded. See
+`ML_RESULTS_REPORT.md` section 24.
 
 ### Zero-shot comparison
 
 Benchmarked against Jev (TypeSafe System One) on the same `clean_v1` label
 space, validation split, n=3,562:
 
-| System | Training data | Accuracy | ECE |
-|---|---|---:|---:|
-| Jev, zero-shot | none | 0.5458 | 0.2896 |
-| ModernBERT `clean_v1` | 16,622 | ~0.73 | not measured |
-| Majority baseline | — | 0.5946 | — |
+| System | Training data | Accuracy | Macro-F1 | ECE |
+|---|---|---:|---:|---:|
+| Jev, zero-shot | none | 0.5458 | 0.3289 | 0.2896 |
+| ModernBERT `clean_v1` | 16,622 | 0.7294 | 0.5630 | **0.0841** |
+| Majority baseline | — | 0.5946 | — | — |
+
+Paired on identical rows: ModernBERT exclusively correct on 883 tickets, Jev
+on 229, McNemar p = 5.5e-91.
+
+**Calibration is measured and acceptable.** ECE 0.0841 supports the use of a
+confidence threshold in `routing.py`. At the 0.80 gate the model auto-routes
+61.8% of tickets at 86.5% accuracy.
 
 The fine-tuned model wins decisively. Note that **this model's own calibration
 has not been measured**, while the routing layer gates on its confidence — see
@@ -191,11 +203,12 @@ Track:
 
 ## Future Work
 
-- **Measure this model's expected calibration error.** `routing.py` gates on
-  its confidence at a 0.65 threshold, but that confidence has never been
-  validated against observed accuracy. The zero-shot benchmark found severe
-  overconfidence in a comparable model, so this should not be assumed.
-- Calibrate model confidence.
+- ~~Measure this model's expected calibration error.~~ **Done:** ECE 0.0841 on
+  the validation split. The confidence gate in `routing.py` rests on a
+  measured quantity rather than an assumption.
+- Consider raising the `routing.py` category-confidence gate from 0.65 toward
+  0.80, where measured accuracy on auto-routed tickets reaches 86.5% at 61.8%
+  coverage.
 - Add operational metadata for priority and escalation risk.
 - Run and compare the ModernBERT parent_queue benchmark on Colab/GPU.
 - Compare ModernBERT-base, ModernBERT-large, DeBERTa-v3-large, and clean_v1 taxonomy runs.

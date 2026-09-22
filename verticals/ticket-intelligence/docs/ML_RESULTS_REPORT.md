@@ -803,10 +803,10 @@ It reports coverage, accuracy, and macro-F1 at confidence thresholds from 0.00 t
 The improvement from `0.5229` to approximately `0.73` is frequently quoted as a
 single modeling gain. It is not, and should not be presented as one.
 
-| Run | Taxonomy | Classes | Accuracy |
-|---|---|---:|---:|
-| ModernBERT-base baseline | original | 10 | 0.5229 |
-| ModernBERT-base + `clean_v1` | merged | 7 | ~0.73 |
+| Run | Taxonomy | Classes | Split | Accuracy |
+|---|---|---:|---|---:|
+| ModernBERT-base baseline | original | 10 | unrecorded | 0.5229 |
+| ModernBERT-base + `clean_v1` | merged | 7 | validation | 0.7313 |
 
 The `clean_v1` run merges `technical_support`, `it_support` and
 `product_support` into one class, and `customer_service` with `general_inquiry`
@@ -819,10 +819,30 @@ headline accuracy number, and one supported by the confusion matrix in
 section 7, where the largest error cells are exactly the queues that `clean_v1`
 merges.
 
+### Provenance
+
+The `clean_v1` metrics were recovered from the published training run rather
+than from this repository. `trainer/checkpoint-3117/trainer_state.json` in the
+Hugging Face model repo records, at epoch 3:
+
+| Metric | Value |
+|---|---:|
+| `eval_accuracy` | 0.7313307130825379 |
+| `eval_macro_f1` | 0.5630438332110753 |
+| `eval_weighted_f1` | 0.7127195384802951 |
+| `eval_loss` | 0.8701930642127991 |
+
+Epochs 1 and 2 scored 0.6842 and 0.7176, so the progression is intact and the
+run was not cherry-picked. `training_config.json` confirms `run_name:
+modernbert_base_clean_v1`, `label_map: clean_v1`, `class_weighting: none`,
+`seed: 42`.
+
+These are `eval_*` metrics, i.e. the **validation** split, not test.
+
 Two open items:
 
-- The `clean_v1` metrics JSON was produced in Colab and never copied back into
-  the repository. Until it is, `~0.73` is quoted, not reproducible in-repo.
+- The 10-class ModernBERT run's split was never recorded. Since the taxonomy
+  comparison rests on it, it should be re-measured rather than assumed.
 - No `clean_v1` baseline comparison exists for TF-IDF. Re-running the v1
   baseline under the merged taxonomy would separate the taxonomy effect from
   the architecture effect cleanly.
@@ -835,11 +855,19 @@ classifier on the same `clean_v1` label space.
 | System | Training data | Accuracy | Macro-F1 | ECE |
 |---|---|---:|---:|---:|
 | Jev, zero-shot | none | 0.5458 | 0.3289 | 0.2896 |
-| ModernBERT-base `clean_v1` | 16,622 | ~0.73 | — | not measured |
+| ModernBERT-base `clean_v1` | 16,622 | 0.7294 | 0.5630 | 0.0841 |
 | Majority-class baseline | — | 0.5946 | — | — |
 
-Measured on the validation split (n=3,562), 337ms median latency, $0.1285
-total, zero request failures.
+Both systems are measured row-by-row on the same validation split (n=3,562).
+ModernBERT is exclusively correct on 883 tickets, Jev on 229; McNemar exact
+p = 5.5e-91. Jev: 337ms median latency, $0.1285 total, zero request failures.
+
+The ModernBERT calibration result settles an open question from section 10:
+`routing.py` gates on category confidence, and that confidence is now shown to
+be well calibrated (ECE 0.0841). The threshold sweep on this run is materially
+better than the v1 TF-IDF sweep in section 9 — at a 0.80 gate it auto-routes
+61.8% of tickets at 86.5% accuracy, against the v1 baseline's 0.03% coverage
+at the same threshold.
 
 Jev did not clear the majority-class baseline, and its confidence was
 systematically overconfident: in the 1,968 cases reporting mean confidence
